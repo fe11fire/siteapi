@@ -21,6 +21,7 @@ class Settings
             'logs' => 'settings/main',
             'middlewares' => 'scripts/middlewares',
             'routes' => 'routes',
+            'headers' => 'common/headers',
         );
 
         self::$settings_files = FileHelper::list_Files(self::$directory);
