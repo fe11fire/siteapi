@@ -6,6 +6,7 @@ use Exception;
 use SiteApi\Root\Helpers\LogHelper;
 use SiteApi\Root\Settings\Settings;
 use SiteApi\Root\Helpers\FileHelper;
+use SiteApi\Root\Http\Contracts\Middleware;
 
 class Router
 {
@@ -48,7 +49,7 @@ class Router
                 if (isset($rule['middlewares'])) {
                     foreach ($rule['middlewares'] as $middleware) {
                         if (class_exists($middleware)) {
-                            /** @var MiddlewareContract $middleware */
+                            /** @var Middleware $middleware */
                             $middleware::apply();
                         }
                     }
@@ -112,7 +113,7 @@ class Router
             // LogHelper::log('get_Param_by_Name', ['Param' => $name, 'Value' => self::$params[$name]]);
             return self::$params[$name];
         }
-        LogHelper::log('Param is not isset', ['Param' => $name], 'errors/');
+        // LogHelper::log('Param is not isset', ['Param' => $name], 'errors/');
         return false;
     }
 
@@ -157,12 +158,6 @@ class Router
 
         foreach (self::$middleware_files as $middlewares_file) {
             array_push(self::$middlewares, include($middlewares_folder . '/' . $middlewares_file));
-            //  = array_merge(self::$middlewares, );
-            // $cl = include($middlewares_folder . '/' . $middlewares_file);
-            // /** @var MiddlewareContract $cl */
-            // $cl::apply();
         }
-
-        // self::log('11111', ['1' => self::$middleware_files, '2' => self::$middlewares]);
     }
 }
