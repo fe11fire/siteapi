@@ -109,12 +109,11 @@ class Router
     public static function get_Param_by_Name(string $name): string | bool
     {
         if (isset(self::$params[$name])) {
-            LogHelper::log('get_Param_by_Name', ['Param' => $name, 'Value' => self::$params[$name]]);
+            // LogHelper::log('get_Param_by_Name', ['Param' => $name, 'Value' => self::$params[$name]]);
             return self::$params[$name];
         }
+        LogHelper::log('Param is not isset', ['Param' => $name], 'errors/');
         return false;
-        // self::log('get_Param_by_Name', ['Message' => 'Param ' . $name . ' not found']);
-        // throw new Exception('Param ' . $name . ' not found');
     }
 
     public static function apply_Param_by_Name(string $name, string $value): void

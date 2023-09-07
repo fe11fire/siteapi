@@ -18,7 +18,7 @@ class Settings
     {
         self::$settings = new stdClass();
         self::$default_directories = (object) array(
-            'logs' => 'settings/main',
+            'logs' => 'siteapilogs',
             'middlewares' => 'scripts/middlewares',
             'routes' => 'routes',
             'headers' => 'common/headers',
@@ -49,6 +49,12 @@ class Settings
 
     public static function get_Directory($name): string
     {
+        if (
+            (isset(self::$settings->{'paths'})) &&
+            (isset(self::$settings->{'paths'}->{$name}))
+        ) {
+            return self::$settings->{'paths'}->{$name};
+        }
         if (!isset(self::$default_directories->{$name})) {
             LogHelper::log('directory name not found', ['name' => $name], 'errors/');
             throw new Exception("directory name not found", 1);
