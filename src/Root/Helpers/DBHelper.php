@@ -12,19 +12,33 @@ class DBHelper
 {
     const DB_PREFIX = '';
 
+    /**
+     * Select first row or return false
+     *
+     * @param string $columns '*' or list of columns
+     * @param array $tables tables with shortNames
+     * @param string $beforeWhere command before Where like JOIN
+     * @param array $where where conclusions in key value format
+     * @param string $beforeWhere commands after where like GROUP ORDER HAVING
+     * @param array $single_Row first row from selected
+     * @param bool $logging log where, args, sql in 'queries/'
+     * @param bool $debug log where, args, sql in 'debug/'
+     * @return bool
+     */
+
     public static function selectSingle(
         string $columns,
-        string $table,
+        array $table,
+        string $beforeWhere,
         array $where,
-        string $postfix,
-        /** GROUP ORDER HAVING in text */
-        &$single_Row,
+        string $afterWhere,
+        array &$single_Row,
         bool $logging = false,
         bool $debug = false
-    ) {
+    ): bool {
         $single_Row = [];
         if (
-            (self::select($columns, $table, $where, $postfix, $rows, $logging, $debug)) &&
+            (self::select($columns, $table, $beforeWhere, $where, $afterWhere, $rows, $logging, $debug)) &&
             (count($rows) == 1)
         ) {
             $single_Row = $rows[0];
@@ -33,43 +47,70 @@ class DBHelper
         return false;
     }
 
+    /**
+     * Select count of rows
+     *
+     * @param string $columns '*' or list of columns
+     * @param array $tables tables with shortNames
+     * @param string $beforeWhere command before Where like JOIN
+     * @param array $where where conclusions in key value format
+     * @param string $beforeWhere commands after where like GROUP ORDER HAVING
+     * @param bool $logging log where, args, sql in 'queries/'
+     * @param bool $debug log where, args, sql in 'debug/'
+     * @return int 
+     */
     public static function selectCount(
         string $columns,
-        string $table,
+        array $table,
+        string $beforeWhere,
         array $where,
-        string $postfix,
-        /** GROUP ORDER HAVING in text */
+        string $afterWhere,
         bool $logging = false,
         bool $debug = false
     ): int {
         if (
-            self::select($columns, $table, $where, $postfix, $rows, $logging, $debug)
+            self::select($columns, $table, $beforeWhere, $where, $afterWhere, $rows, $logging, $debug)
         ) {
             return count($rows);
         }
         return 0;
     }
 
+    /**
+     * Select rows
+     *
+     * @param string $columns '*' or list of columns
+     * @param array $tables tables with shortNames
+     * @param string $beforeWhere command before Where like JOIN
+     * @param array $where where conclusions in key value format
+     * @param string $beforeWhere commands after where like GROUP ORDER HAVING
+     * @param $rows selected rows
+     * @param bool $logging log where, args, sql in 'queries/'
+     * @param bool $debug log where, args, sql in 'debug/'
+     * @return bool //true or false
+     */
     public static function select(
         string $columns,
-        string $table,
+        array $tables,
+        string $beforeWhere,
         array $where,
-        string $postfix,
-        /** GROUP ORDER HAVING in text */
+        string $afterWhere,
         &$rows,
         bool $logging = false,
         bool $debug = false
     ): bool {
         $args = [];
         $where = self::prepare_Where($where, $args);
-
-        $sql = "SELECT " . $columns . " FROM " . self::DB_PREFIX . $table . " " . $where . ' ' . $postfix;
+        foreach ($tables as &$table) {
+            $table = self::DB_PREFIX . $table;
+        }
+        $sql = "SELECT " . $columns . " FROM " . implode(',', $tables) . " " . $beforeWhere . " " . $where . ' ' . $afterWhere;
         if ($debug) {
-            LogHelper::log('Select Debug', ['sql' => $sql, 'args' => $args]);
+            LogHelper::log('Select Debug', ['args' => $args, 'where' => $where, 'sql' => $sql], 'debug/');
         }
         try {
             if ($logging) {
-                LogHelper::log('Select Logging', [$where]);
+                LogHelper::log('Select Logging', ['args' => $args, 'where' => $where, 'sql' => $sql], 'queries/');
             }
             $rows = self::universal($sql, $args, true);
             return true;
