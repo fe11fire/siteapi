@@ -1,13 +1,18 @@
 <?php
 
+namespace SiteApi\Root\Messenger;
+
 class Message
 {
-    const FIELD_MESSAGE = 'message';
-    const FIELD_TITLE = 'title';
-    private array $data;
-    
-    public function __construct(array $data, )
+    private TemplateContract $template;
+
+    public function __construct(TemplateContract $template, array $data, ?array $params)
     {
-        
+        $template->init($data, isset($params) ? $params : null);
+    }
+
+    public function get(ClientContract $client)
+    {
+        return $this->template->makeMessage($client);
     }
 }

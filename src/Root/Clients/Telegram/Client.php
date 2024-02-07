@@ -1,17 +1,19 @@
 <?php
+
 namespace SiteApi\Root\Clients\Telegram;
 
 
 use Exception;
+use SiteApi\Root\Messenger\ClientContract;
 use Telegram\Bot\Api;
 
 
-class Sender
+class Client extends ClientContract
 {
     // private string $id_telegram;
     private Api $telegram;
 
-    function __construct(int $token)
+    function __construct(int $token) 
     {
         $this->telegram = new Api($token);
         // throw new Exception('No bot with id = ' . $id_Telegram_Bot);
