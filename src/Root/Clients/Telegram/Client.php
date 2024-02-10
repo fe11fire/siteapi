@@ -4,77 +4,52 @@ namespace SiteApi\Root\Clients\Telegram;
 
 
 use Exception;
-use SiteApi\Root\Messenger\ClientContract;
-use Telegram\Bot\Api;
 
+use Telegram\Bot\Api;
+use SiteApi\Root\Helpers\LogHelper;
+use SiteApi\Root\Messenger\Message;
+use SiteApi\Root\Messenger\Recipient;
+use Telegram\Bot\FileUpload\InputFile;
+use SiteApi\Root\Messenger\ClientContract;
 
 class Client extends ClientContract
 {
-    // private string $id_telegram;
     private Api $telegram;
 
-    function __construct(int $token) 
+    protected function init(array $params): void
     {
-        $this->telegram = new Api($token);
-        // throw new Exception('No bot with id = ' . $id_Telegram_Bot);
+        if (!isset($params['token'])) {
+            LogHelper::log(__METHOD__ . ' token is not isset', ['params' => $params], 'errors/');
+            throw new Exception('Ошибка при отправке сообщения');
+        }
+        $this->telegram = new Api($params['token']);
     }
 
-    public function send(Message $message): bool
+    public function send(Message $message, Recipient $recipient): bool
     {
-        LogHelper::log('TelegramSender send', ['message' => $message->get($this)]);
+        if ($message->hasAttachments()) {
+            foreach ($message->getAttachments() as $attachment) {
+                $file = InputFile::create($attachment['file'], $attachment['filename']);
+                $response = $this->telegram->sendDocument([
+                    'chat_id' => $recipient->getAddress($this),
+                    'document' => $file,
+                ]);
+            }
+        }
+
+        LogHelper::log('TelegramSender send', ['message' => $message->getMessage($this)]);
         try {
             $result = $this->telegram->sendMessage(
                 [
-                    'chat_id' => $this->id_telegram,
-                    'text'    => $message->get($this),
+                    'chat_id' => $recipient->getAddress($this),
+                    'text'    => $message->getMessage($this)[0],
                     'parse_mode' => 'HTML',
-                ]
-                    + $message->get_Reply_Markup(),
+                ] + $message->getReplyMarkup($this),
             );
         } catch (Exception $e) {
             LogHelper::log(__METHOD__, ['error' => $e->getMessage()], 'errors/');
             return false;
         }
         return true;
-    }
-
-    public static function code(string $text): string
-    {
-        return '<code>' . $text . '</code>';
-    }
-
-    public static function pre(string $text): string
-    {
-        return '<pre>' . $text . '</pre>';
-    }
-
-    public static function i(string $text): string
-    {
-        return '<i>' . $text . '</i>';
-    }
-
-    public static function b(string $text): string
-    {
-        return '<b>' . $text . '</b>';
-    }
-
-    public static function u(string $text): string
-    {
-        return '<u>' . $text . '</u>';
-    }
-
-    public static function a(string $text, string $link): string
-    {
-        return '<a href="' . $link . '">' . $text . '</a>';
-    }
-
-    public static function spoiler_start(): string
-    {
-        return '<span class="tg-spoiler">';
-    }
-
-    public static function spoiler_end(): string
-    {
-        return '</span>';
     }
 }
