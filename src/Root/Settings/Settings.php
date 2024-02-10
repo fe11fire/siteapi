@@ -26,10 +26,10 @@ class Settings
 
         self::$settings_files = FileHelper::list_Files(self::$directory);
         foreach (self::$settings_files as $key_ => $file) {
-            self::$settings->{$file} = new stdClass();
+            self::$settings->{substr($file, 0, -5)} = new stdClass();
             $str = json_decode(file_get_contents(self::$directory . '/' . $file));
             foreach ($str as $key => $value) {
-                self::$settings->{$file}->{$key} = $value;
+                self::$settings->{substr($file, 0, -5)}->{$key} = $value;
             }
         }
     }
