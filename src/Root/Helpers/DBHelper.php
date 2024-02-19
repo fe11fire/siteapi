@@ -32,7 +32,7 @@ class DBHelper
         string $beforeWhere,
         array $where,
         string $afterWhere,
-        array &$single_Row,
+        &$single_Row,
         bool $logging = false,
         bool $debug = false
     ): bool {
