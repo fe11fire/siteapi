@@ -34,7 +34,7 @@ class Settings
         }
     }
 
-    public static function get(string $file, string $name): string
+    public static function get(string $file, string $name): string | array
     {
         if (!isset(self::$settings->{$file})) {
             LogHelper::log('file not found', ['file' => $file, 'name' => $name], 'errors/');
