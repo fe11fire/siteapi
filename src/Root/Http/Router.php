@@ -78,7 +78,7 @@ class Router
                 $delimeter = '&';
             }
         }
-        header('Location:https://' . Settings::get('host', 'domain') . Settings::get('host', 'host') . '/' . $url);
+        header('Location:https://' . Settings::get('env', 'domain') . Settings::get('env', 'host') . '/' . $url);
         exit;
     }
 
