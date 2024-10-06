@@ -27,7 +27,7 @@ abstract class TemplateContract
     public function makeReplyMarkup(ClientContract $client): array
     {
         if (!isset($this->reply_markup)) {
-            LogHelper::log('reply_markup is not isset', [], 'error/');
+            LogHelper::log('reply_markup is not isset', [], 'errors/');
             return [];
         }
         return $this->reply_markup->makeMessage($client);

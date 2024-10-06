@@ -127,6 +127,11 @@ class Router
         self::$params[$name] .= $value;
     }
 
+    public static function is_Ajax(): bool
+    {
+        return isset(self::$route) && explode('/', self::$route)[0] == 'ajax';
+    }
+
     private static function make_Request_Params(): void
     {
         $query = [];
