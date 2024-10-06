@@ -49,6 +49,17 @@ class Settings
         return self::$settings->{$file}->{$name};
     }
 
+    public static function get_Default(
+        string $file,
+        string $name,
+        string | array | stdClass $default
+    ): string | array | stdClass {
+        if ((!isset(self::$settings->{$file})) || (!isset(self::$settings->{$file}->{$name}))) {
+            return $default;
+        }
+        return self::$settings->{$file}->{$name};
+    }
+
     public static function get_Directory($name): string
     {
         if (

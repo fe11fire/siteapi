@@ -22,7 +22,6 @@ class Router
 
     public static function init(string $request)
     {
-        //$_SERVER['REQUEST_URI']
         self::$request = $request;
         self::make_Request_Route();
         self::make_Request_Params();
@@ -32,14 +31,16 @@ class Router
 
     public static function route(string $name, array $new_Params = null): bool
     {
+        $folder = Settings::get_Default('env', 'folder', '');
+
         foreach (self::$rules as $rule) {
-            if ($rule['name'] == $name) {
-                self::$path = $rule['path'];
+            if ($folder . $rule['name'] == $name) {
+                self::$path = $folder . $rule['path'];
 
                 if (isset($rule['address'])) {
                     self::$address = $rule['address'];
                 } else {
-                    self::$address = $rule['name'];
+                    self::$address = $folder . $rule['name'];
                 }
 
                 if ($new_Params != null) {
