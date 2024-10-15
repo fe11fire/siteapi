@@ -217,10 +217,6 @@ class DBHelper
     public static function universal($sql, $args = null, $fetch = null, $last_id = null, $exec_time = false)
     {
         $rows = [];
-        // if (!issSettings::get('db', 'server'))) {
-        //     LogHelper::log('Queries', ['error' => 'DB data not init'], 'errors/');
-        //     throw new Exception("DB Data not Init", 1);
-        // }
 
         $dsn = "mysql:host=" . Settings::get('db', 'server') . ";dbname=" . Settings::get('db', 'name') . ";charset=utf8mb4";
         $opt = [

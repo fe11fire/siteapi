@@ -34,6 +34,7 @@ class Router
         $folder = Settings::get_Default('env', 'folder', '');
 
         foreach (self::$rules as $rule) {
+
             if ($folder . $rule['name'] == $name) {
                 self::$path = $folder . $rule['path'];
 
@@ -57,6 +58,7 @@ class Router
                 }
 
                 if (isset($rule['wrapper'])) {
+                    // echo $folder . $rule['wrapper'];
                     $filename = $rule['path'] . $rule['url']; //need for wrapper
                     require_once($rule['wrapper']);
                 } else {
@@ -79,7 +81,7 @@ class Router
                 $delimeter = '&';
             }
         }
-        header('Location:https://' . Settings::get('env', 'domain') . Settings::get('env', 'host') . '/' . $url);
+        header('Location:https://' . Settings::get('env', 'domain') . Settings::get('env', 'host') . '/' . Settings::get_Default('env', 'folder', '') . $url);
         exit;
     }
 
