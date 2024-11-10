@@ -68,6 +68,9 @@ class Curl
         curl_setopt($this->curl, CURLOPT_VERBOSE, 0);
         curl_setopt($this->curl, CURLOPT_POST, true);
         curl_setopt($this->curl, CURLOPT_URL, $url);
+        curl_setopt($this->curl, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($this->curl, CURLOPT_CONNECTTIMEOUT_MS, 5000);
+        curl_setopt($this->curl, CURLOPT_TIMEOUT, 10);
     }
 
     private function curl_header($user_header = [])
