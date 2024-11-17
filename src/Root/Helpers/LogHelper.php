@@ -10,7 +10,7 @@ use SiteApi\Root\Settings\Settings;
 class LogHelper
 {
     public static function log(
-        $message,
+        string $message,
         array $params = [],
         $folder = 'common/',
         $debug = true,
@@ -64,5 +64,12 @@ class LogHelper
     public static function dnd($val, string $message = 'Dump Not Die')
     {
         self::log($message, [$val], 'dump/');
+    }
+
+    public static function error(
+        string $message,
+        array $params = []
+    ) {
+        self::log($message, $params, 'errors/');
     }
 }
