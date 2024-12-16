@@ -34,6 +34,9 @@ class Curl
 
     public function exec()
     {
+        if (isset($this->user_payload['secret'])) {
+            $this->user_payload['secret'] = '*hidden*';
+        }
         LogHelper::log('CURL exec', ['curl_getinfo' => curl_getinfo($this->curl), 'user_payload' => $this->user_payload], $this->log_folder);
         $this->result = curl_exec($this->curl);
         if ($this->result === false) {
