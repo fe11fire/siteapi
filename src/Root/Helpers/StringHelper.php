@@ -26,7 +26,7 @@ class StringHelper
 
     public static function up_First_Letter(string $str): string
     {
-        return mb_convert_case($str, MB_CASE_TITLE, "UTF-8");
+        return mb_convert_case(mb_substr($str, 0, 1), MB_CASE_TITLE, "UTF-8") . mb_substr($str, 1);
     }
 
     public static function plural_Form(
