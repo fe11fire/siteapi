@@ -1,4 +1,5 @@
 <?php
+
 namespace SiteApi\Root\Helpers;
 
 class FileHelper
@@ -49,7 +50,7 @@ class FileHelper
         return array_values($folders);
     }
 
-    public static function list_Folders(string $dir, string $subdir = ''): array
+    public static function list_Folders(string $dir, string $subdir = '', bool $subfolders = true): array
     {
         $ffs = scandir($dir);
 
@@ -65,9 +66,11 @@ class FileHelper
                 continue;
             }
             if (is_dir($dir . '/' . $ffs[$i])) {
-                $sub_ffs = array_merge($sub_ffs, self::list_Folders($dir . '/' . $ffs[$i], $ffs[$i]));
-                if ($subdir != '') {
-                    $ffs[$i] = $subdir . '/' . $ffs[$i];
+                if ($subfolders) {
+                    $sub_ffs = array_merge($sub_ffs, self::list_Folders($dir . '/' . $ffs[$i], $ffs[$i]));
+                    if ($subdir != '') {
+                        $ffs[$i] = $subdir . '/' . $ffs[$i];
+                    }
                 }
             } else {
                 unset($ffs[$i]);
