@@ -5,6 +5,7 @@
         "secure-http": false
     },
     "name": "fellfire/siteapi",
+    "type": "packege",
     "authors": [
         {
             "name": "fellfire none",
@@ -19,7 +20,7 @@
     },
     "autoload": {
         "psr-4": {
-            "SiteApi\\": "src/"
+            "fellfire\\SiteApi\\": "src/"
         }
     }
 }

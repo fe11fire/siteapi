@@ -2,10 +2,12 @@
 
 namespace SiteApi\Root\Settings;
 
-use Exception;
-use SiteApi\Root\Helpers\FileHelper;
-use SiteApi\Root\Helpers\LogHelper;
 use stdClass;
+use Exception;
+
+use SiteApi\Root\Helpers\LogHelper;
+use SiteApi\Root\Helpers\FileHelper;
+use SiteApi\Root\Helpers\StringHelper;
 
 class Settings
 {
@@ -38,8 +40,8 @@ class Settings
         string $file,
         string $name,
     ): string | array | stdClass {
-        if (getenv($file . $name)) {
-            return $file . $name;
+        if ($get = getenv(StringHelper::up_Letters($file) . '_' . StringHelper::up_Letters($name))) {
+            return $get;
         }
         if (!isset(self::$settings->{$file})) {
             LogHelper::log('file not found', ['file' => $file, 'name' => $name], 'errors/');
