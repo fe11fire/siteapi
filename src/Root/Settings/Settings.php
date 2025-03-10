@@ -59,6 +59,9 @@ class Settings
         string $name,
         string | array | stdClass $default
     ): string | array | stdClass {
+        if ($get = getenv(StringHelper::up_Letters($file) . '_' . StringHelper::up_Letters($name))) {
+            return $get;
+        }
         if ((!isset(self::$settings->{$file})) || (!isset(self::$settings->{$file}->{$name}))) {
             return $default;
         }
