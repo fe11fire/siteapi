@@ -40,7 +40,7 @@ class Settings
         string $file,
         string $name,
     ): string | array | stdClass {
-        if (($get = getenv(StringHelper::up_Letters($file) . '_' . StringHelper::up_Letters($name))) !== null) {
+        if (($get = getenv(StringHelper::up_Letters($file) . '_' . StringHelper::up_Letters($name))) !== false) {
             return $get;
         }
         if (!isset(self::$settings->{$file})) {
@@ -59,7 +59,7 @@ class Settings
         string $name,
         string | array | stdClass $default
     ): string | array | stdClass {
-        if (($get = getenv(StringHelper::up_Letters($file) . '_' . StringHelper::up_Letters($name))) !== null) {
+        if (($get = getenv(StringHelper::up_Letters($file) . '_' . StringHelper::up_Letters($name))) !== false) {
             return $get;
         }
         if ((!isset(self::$settings->{$file})) || (!isset(self::$settings->{$file}->{$name}))) {
