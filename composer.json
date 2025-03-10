@@ -1,11 +1,11 @@
 {
+    "name": "fellfire/siteapi",
+    "type": "library",
     "config": {
         "preferred-install": "dist",
         "disable-tls": true,
         "secure-http": false
     },
-    "name": "fellfire/siteapi",
-    "type": "packege",
     "authors": [
         {
             "name": "fellfire none",
@@ -20,7 +20,7 @@
     },
     "autoload": {
         "psr-4": {
-            "fellfire\\SiteApi\\": "src/"
+            "SiteApi\\": "src/"
         }
     }
 }
