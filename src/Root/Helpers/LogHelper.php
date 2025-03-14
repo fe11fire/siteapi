@@ -3,7 +3,7 @@
 namespace SiteApi\Root\Helpers;
 
 use Monolog\Level;
-use SiteApi\Root\Providers\Logger\LogProvider;
+use SiteApi\Root\Providers\Logger\LoggerProvider;
 
 
 class LogHelper
@@ -17,7 +17,7 @@ class LogHelper
         $send = false,
         $tag = 'error'
     ) {
-        $log = LogProvider::get($folder, $status);
+        $log = LoggerProvider::get($folder, $status);
 
         if (count($params) == 0) {
             $params = ['Params' => 'empty'];

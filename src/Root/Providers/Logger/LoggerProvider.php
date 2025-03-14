@@ -5,7 +5,7 @@ namespace SiteApi\Root\Providers\Logger;
 use Monolog\Level;
 use Monolog\Logger;
 
-class LogProvider implements LoggerContract
+class LoggerProvider implements LoggerContract
 {
     public static function get(string $folder, Level $status): Logger
     {
