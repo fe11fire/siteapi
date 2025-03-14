@@ -2,10 +2,9 @@
 
 namespace SiteApi\Root\Helpers;
 
-use Carbon\Carbon;
-use Monolog\Logger;
-use Monolog\Handler\StreamHandler;
-use SiteApi\Root\Settings\Settings;
+use Monolog\Level;
+use SiteApi\Root\Providers\Logger\LogProvider;
+
 
 class LogHelper
 {
@@ -14,17 +13,11 @@ class LogHelper
         array $params = [],
         $folder = 'common/',
         $debug = true,
-        $status = Logger::INFO,
+        $status = Level::Info,
         $send = false,
         $tag = 'error'
     ) {
-        $log = new Logger('name');
-        $dir = Settings::get_Directory('logs') . '/' . Carbon::now()->format('Y') . '/' . $folder;
-        if (!file_exists($dir) || !is_dir($dir)) {
-            mkdir($dir, recursive: true);
-        }
-
-        $log->pushHandler(new StreamHandler($dir . Carbon::now()->format('m-d') . '.log', $status));
+        $log = LogProvider::get($folder, $status);
 
         if (count($params) == 0) {
             $params = ['Params' => 'empty'];
