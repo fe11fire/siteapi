@@ -3,18 +3,18 @@
 namespace SiteApi\Root\Providers\Cache;
 
 use Exception;
-use Redis as GlobalRedis;
+use Predis\Client;
 use SiteApi\Root\Helpers\LogHelper;
 use SiteApi\Root\Providers\Cache\CacheProvider;
 
 class Redis implements CacheContract
 {
-    private static GlobalRedis | null $instance = null;
+    private static Client | null $instance = null;
 
     private static function init(): bool
     {
         if (self::$instance === null) {
-            self::$instance = new GlobalRedis([
+            self::$instance = new Client([
                 'host' => CacheEnum::REDIS->getHost(),
                 'port' => CacheEnum::REDIS->getPort(),
             ]);

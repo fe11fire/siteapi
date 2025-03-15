@@ -17,7 +17,7 @@
         "monolog/monolog": "^3",
         "phpmailer/phpmailer": "^6.7",
         "irazasyed/telegram-bot-sdk": "^3.13",
-        "phpredis/phpredis": "^6.1"
+        "predis/predis": "^2.3"
     },
     "autoload": {
         "psr-4": {
