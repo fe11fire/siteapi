@@ -54,4 +54,14 @@ class Redis implements CacheContract
         }
         self::$instance->del($key);
     }
+
+    public static function info(): string
+    {
+        return CacheEnum::REDIS->value;
+    }
+
+    public static function status(): bool
+    {
+        return self::$instance !== null;
+    }
 }
