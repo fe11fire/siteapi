@@ -20,7 +20,7 @@ class Redis implements CacheContract
             ]);
             try {
                 self::$instance->ping();
-                self::$instance->pconnect(CacheEnum::REDIS->getHost(), CacheEnum::REDIS->getPort());
+                self::$instance->connect();
             } catch (Exception $e) {
                 self::$instance = null;
                 LogHelper::error('Redis not connected');
@@ -35,7 +35,7 @@ class Redis implements CacheContract
         if (!self::init()) {
             return;
         }
-        self::$instance->set($key, $value, $period);
+        self::$instance->set($key, $value, expireTTL: $period);
     }
 
     public static function get(string $key): string | array | false
