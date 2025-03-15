@@ -35,7 +35,7 @@ class Redis implements CacheContract
         if (!self::init()) {
             return;
         }
-        self::$instance->set($key, $value, expireTTL: $period);
+        self::$instance->set($key, $value, 'EX', $period);
     }
 
     public static function get(string $key): string | array | false
