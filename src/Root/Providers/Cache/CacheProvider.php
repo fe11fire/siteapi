@@ -25,7 +25,6 @@ class CacheProvider implements CacheContract
 
     public static function delete(string $key): void
     {
-
         self::initDefault();
         self::$instance::delete($key);
     }
@@ -40,5 +39,21 @@ class CacheProvider implements CacheContract
         if (!isset(self::$instance)) {
             self::$instance = CacheEnum::MEMCACHE->getProvider();
         }
+    }
+
+    public static function info(): string
+    {
+        if (!isset(self::$instance)) {
+            return 'Null Cache';
+        }
+        return self::$instance::info();
+    }
+
+    public static function status(): bool
+    {
+        if (!isset(self::$instance)) {
+            return false;
+        }
+        return self::$instance::status();
     }
 }

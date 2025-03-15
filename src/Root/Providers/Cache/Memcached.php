@@ -49,4 +49,14 @@ class Memcached implements CacheContract
         }
         self::$instance->delete($key);
     }
+
+    public static function info(): string
+    {
+        return CacheEnum::MEMCACHED->value;
+    }
+
+    public static function status(): bool
+    {
+        return self::$instance !== null;
+    }
 }

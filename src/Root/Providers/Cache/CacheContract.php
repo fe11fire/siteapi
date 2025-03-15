@@ -14,4 +14,6 @@ interface CacheContract
     public static function set(string $key, mixed $value, int $period = CacheProvider::PERIOD_DEFAULT): void;
     public static function get(string $key): string | array | false;
     public static function delete(string $key): void;
+    public static function info(): string;
+    public static function status(): bool;
 }
