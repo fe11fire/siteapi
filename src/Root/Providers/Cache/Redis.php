@@ -19,8 +19,8 @@ class Redis implements CacheContract
                 'port' => CacheEnum::REDIS->getPort(),
             ]);
             try {
+                self::$instance->getConnection();
                 self::$instance->ping();
-                self::$instance->connect();
             } catch (Exception $e) {
                 self::$instance = null;
                 LogHelper::error('Redis not connected');
