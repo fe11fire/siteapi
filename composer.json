@@ -16,7 +16,8 @@
         "nesbot/carbon": "^3",
         "monolog/monolog": "^3",
         "phpmailer/phpmailer": "^6.7",
-        "irazasyed/telegram-bot-sdk": "^3.13"
+        "irazasyed/telegram-bot-sdk": "^3.13",
+        "phpredis/phpredis": "^6.1"
     },
     "autoload": {
         "psr-4": {
