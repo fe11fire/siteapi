@@ -12,7 +12,7 @@ class FileLogger implements LoggerContract
 {
     public static function get(string $folder, Level $status): Logger
     {
-        $dir = Settings::get_Directory('logs') . '/' . Carbon::now()->format('Y') . '/' . $folder;
+        $dir = Settings::get_Directory_Default('logs', 'siteapilogs') . '/' . Carbon::now()->format('Y') . '/' . $folder;
         if (!file_exists($dir) || !is_dir($dir)) {
             mkdir($dir, recursive: true);
         }

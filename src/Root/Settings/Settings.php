@@ -82,4 +82,15 @@ class Settings
         }
         return self::$default_directories->{$name};
     }
+
+    public static function get_Directory_Default($name, string $default): string
+    {
+        if (
+            (isset(self::$settings->{'paths'})) &&
+            (isset(self::$settings->{'paths'}->{$name}))
+        ) {
+            return self::$settings->{'paths'}->{$name};
+        }
+        return $default;
+    }
 }
