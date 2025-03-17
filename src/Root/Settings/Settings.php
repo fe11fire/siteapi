@@ -27,6 +27,11 @@ class Settings
         );
 
         self::$settings_files = FileHelper::list_Files(self::$directory);
+
+        if (self::$settings_files === null) {
+            return;
+        }
+
         foreach (self::$settings_files as $key_ => $file) {
             self::$settings->{substr($file, 0, -5)} = new stdClass();
             $str = json_decode(file_get_contents(self::$directory . '/' . $file));
@@ -40,16 +45,17 @@ class Settings
         string $file,
         string $name,
     ): string | array | stdClass {
-        if (($get = getenv(StringHelper::up_Letters($file) . '_' . StringHelper::up_Letters($name))) !== false) {
+        $envName = StringHelper::up_Letters($file) . '_' . StringHelper::up_Letters($name);
+        if (($get = getenv($envName)) !== false) {
             return $get;
         }
         if (!isset(self::$settings->{$file})) {
-            LogHelper::log('file not found', ['file' => $file, 'name' => $name], 'errors/');
-            throw new Exception("file not found", 1);
+            LogHelper::log('Repair one of this: - file not found; - missed env variable.', ['file' => $file, 'name' => $name, 'env_variable' => $envName], 'errors/');
+            throw new Exception("Repair one of this: - file not found; - missed env variable.", 1);
         }
         if (!isset(self::$settings->{$file}->{$name})) {
-            LogHelper::log('name in file not found', ['file' => $file, 'name' => $name], 'errors/');
-            throw new Exception("name in file not found", 1);
+            LogHelper::log('Repair one of this: - name in file not found; - missed env variable.', ['file' => $file, 'name' => $name, 'env_variable' => $envName], 'errors/');
+            throw new Exception("Repair one of this: - name in file not found; - missed env variable.", 1);
         }
         return self::$settings->{$file}->{$name};
     }
