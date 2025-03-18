@@ -35,7 +35,7 @@ class Redis implements CacheContract
         if (!self::init()) {
             return;
         }
-        self::$instance->set($key, $value, 'EX', $period);
+        self::$instance->set($key, json_encode($value), 'EX', $period);
     }
 
     public static function get(string $key): string | array | false
@@ -44,7 +44,7 @@ class Redis implements CacheContract
             return false;
         }
         $v = self::$instance->get($key);
-        return $v;
+        return $v == null ? false : json_decode($v);
     }
 
     public static function delete(string $key): void
