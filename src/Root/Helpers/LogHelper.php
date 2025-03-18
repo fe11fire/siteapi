@@ -47,7 +47,7 @@ class LogHelper
             $bt = debug_backtrace();
             $Debug_str = '';
             foreach ($bt as $key) {
-                $Debug_str .= $key['line'] . ' - ' . $key['file'] . PHP_EOL . '{' . json_encode($key['args']) . '}' . PHP_EOL;
+                $Debug_str .= (isset($key['line']) ? $key['line'] . ' - ' : '') . (isset($key['file']) ? $key['file'] : '') . PHP_EOL . '{' . json_encode($key['args']) . '}' . PHP_EOL;
             }
             $params = $params + ['debug' => $Debug_str];
         }
