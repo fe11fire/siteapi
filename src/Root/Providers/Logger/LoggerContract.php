@@ -8,4 +8,5 @@ use Monolog\Logger;
 interface LoggerContract
 {
     public static function get(string $folder, Level $status): Logger;
+    public static function info(): string;
 }

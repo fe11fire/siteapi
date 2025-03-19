@@ -26,4 +26,10 @@ class LoggerProvider implements LoggerContract
             self::$instance = LoggerEnum::FILE->getProvider();
         }
     }
+
+    public static function info(): string
+    {
+        self::initDefault();
+        return self::$instance::info();
+    }
 }

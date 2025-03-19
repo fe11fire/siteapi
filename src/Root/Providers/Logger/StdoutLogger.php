@@ -14,4 +14,9 @@ class StdoutLogger implements LoggerContract
         $log->pushHandler(new StreamHandler("php://stdout", $status));
         return $log;
     }
+
+    public static function info(): string
+    {
+        return LoggerEnum::STDOUT->value;
+    }
 }

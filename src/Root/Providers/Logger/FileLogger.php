@@ -21,4 +21,9 @@ class FileLogger implements LoggerContract
         $log->pushHandler(new StreamHandler($dir . Carbon::now()->format('m-d') . '.log', $status));
         return $log;
     }
+
+    public static function info(): string
+    {
+        return LoggerEnum::FILE->value;
+    }
 }
