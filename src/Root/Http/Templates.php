@@ -1,4 +1,5 @@
 <?php
+namespace SiteApi\Root\Http;
 
 class Templates
 {
