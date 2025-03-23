@@ -3,7 +3,7 @@
     "type": "library",
     "config": {
         "preferred-install": "dist",
-        "disable-tls": true,
+        "disable-tls": false,
         "secure-http": false
     },
     "authors": [
@@ -12,16 +12,16 @@
             "email": "r1der88@mail.ru"
         }
     ],
-    "require": {
-        "nesbot/carbon": "^3",
-        "monolog/monolog": "^3",
-        "phpmailer/phpmailer": "^6.7",
-        "irazasyed/telegram-bot-sdk": "^3.13",
-        "predis/predis": "^2.3"
-    },
     "autoload": {
         "psr-4": {
             "SiteApi\\": "src/"
         }
+    },
+    "require": {
+        "irazasyed/telegram-bot-sdk": "3.9",
+        "monolog/monolog": "^3.8",
+        "nesbot/carbon": "^2.73",
+        "phpmailer/phpmailer": "^6.9",
+        "predis/predis": "^2.3"
     }
 }

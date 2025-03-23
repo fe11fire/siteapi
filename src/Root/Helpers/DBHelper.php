@@ -2,7 +2,6 @@
 
 namespace SiteApi\Root\Helpers;
 
-
 use PDO;
 use Exception;
 use SiteApi\Root\Helpers\LogHelper;

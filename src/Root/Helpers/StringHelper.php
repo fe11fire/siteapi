@@ -2,8 +2,6 @@
 
 namespace SiteApi\Root\Helpers;
 
-use stdClass;
-
 class StringHelper
 
 {

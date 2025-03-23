@@ -2,7 +2,6 @@
 
 namespace SiteApi\Root\Clients\Telegram\Templates;
 
-use SiteApi\Root\Settings\Settings;
 use SiteApi\Root\Messenger\ClientContract;
 use SiteApi\Root\Messenger\TemplateContract;
 
