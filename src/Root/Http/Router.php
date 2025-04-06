@@ -29,7 +29,7 @@ class Router
         self::make_Middlewares(Settings::get_Directory('middlewares'));
     }
 
-    public static function route(string $name, array $new_Params = null): bool
+    public static function route(string $name, ?array $new_Params): bool
     {
         $folder = Settings::get_Default('env', 'folder', '');
 
@@ -71,7 +71,7 @@ class Router
         return false;
     }
 
-    public static function redirect(string $name, array $new_Params = null): void
+    public static function redirect(string $name, ?array $new_Params): void
     {
         $url = $name;
         if (isset($new_Params)) {

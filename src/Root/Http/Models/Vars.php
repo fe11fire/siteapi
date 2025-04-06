@@ -1,4 +1,5 @@
 <?php
+
 namespace SiteApi\Root\Http\Models;
 
 use stdClass;
@@ -30,14 +31,14 @@ class Vars
         self::$vars[$name]->{$subname} = $value;
     }
 
-    public static function get(string $name, $index = null): mixed
+    public static function get(string $name, mixed $index = null): mixed
     {
         if (!isset(self::$vars[$name])) {
             LogHelper::log('No name `' . $name . '` in Vars', [], 'errors/');
             return false;
         }
 
-        if (!is_null($index)) {
+        if (isset($index)) {
             switch (gettype(self::$vars[$name])) {
                 case 'array':
                     if (!isset(self::$vars[$name][$index])) {
@@ -64,7 +65,7 @@ class Vars
         return self::$vars[$name];
     }
 
-    public static function isset(string $name, $index = null): mixed
+    public static function isset(string $name, mixed $index = null): mixed
     {
         if (!isset(self::$vars[$name])) {
             return false;
