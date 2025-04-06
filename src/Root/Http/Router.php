@@ -112,7 +112,7 @@ class Router
 
     public static function get_Param_by_Name(string $name): string | bool
     {
-        if (isset(self::$params[$name])) {
+        if (isset(self::$params) && isset(self::$params[$name])) {
             // LogHelper::log('get_Param_by_Name', ['Param' => $name, 'Value' => self::$params[$name]]);
             return self::$params[$name];
         }
