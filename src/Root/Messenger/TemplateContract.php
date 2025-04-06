@@ -13,7 +13,7 @@ abstract class TemplateContract
     protected array $params = [];
     protected TemplateContract $reply_markup;
 
-    function __construct(array $data, array $params = [], ?string $reply_markup_class)
+    function __construct(array $data, array $params = [], ?string $reply_markup_class = null)
     {
         $this->data = $data;
         $this->params = $params;
