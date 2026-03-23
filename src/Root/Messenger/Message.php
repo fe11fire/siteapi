@@ -3,7 +3,6 @@
 namespace SiteApi\Root\Messenger;
 
 use Exception;
-use SiteApi\Root\Helpers\LogHelper;
 
 class Message
 {
@@ -11,7 +10,7 @@ class Message
     private TemplateContract $template;
     private array $attachments = [];
 
-    public function __construct(array $data, array $params = [], string $templateContractClass, ?string $replyMarkupClass = null)
+    public function __construct(array $data, array $params = [], string $templateContractClass = '', ?string $replyMarkupClass = null)
     {
         if (!is_subclass_of($templateContractClass, TemplateContract::class)) {
             throw new Exception('templateContractClass is not subclass of TemplateContract');
