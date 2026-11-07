@@ -53,30 +53,40 @@ class Includer
         include($module->get_Filename());
     }
 
+    private static function escapeHtml(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+
     public static function var_To_InlineData(array $data): string
     {
         $line = '';
         foreach ($data as $key => $key_value) {
-            $line .= ' data-' . $key . '="' . $key_value . '"';
+            if (!preg_match('/\A[a-zA-Z0-9_][a-zA-Z0-9_.:-]*\z/', (string) $key)) {
+                throw new \InvalidArgumentException('Invalid data attribute name');
+            }
+            $line .= ' data-' . $key . '="' . self::escapeHtml((string) $key_value) . '"';
         }
         return $line;
     }
 
+    /** CSS values must come from trusted application code. */
     public static function var_To_InlineStyle(array $style): string
     {
-        $line = 'style="';
+        $declarations = '';
         foreach ($style as $key => $key_value) {
-            $line .= $key . ': ' . $key_value . '; ';
+            if (!preg_match('/\A(?:--[a-zA-Z0-9_-]+|-?[a-zA-Z][a-zA-Z0-9-]*)\z/', (string) $key)) {
+                throw new \InvalidArgumentException('Invalid CSS property name');
+            }
+            $declarations .= $key . ': ' . $key_value . '; ';
         }
-        $line .= '"';
-        return $line;
+        return 'style="' . self::escapeHtml($declarations) . '"';
     }
 
     public static function var_To_SelectOptions(array $data): string
     {
         $options = '';
         foreach ($data as $key) {
-            //TODO
             $checked = '';
             if (isset($key['checked']) && ($key['checked'] == true)) {
                 $checked = ' checked';
@@ -85,16 +95,44 @@ class Includer
             if (isset($key['selected']) && ($key['selected'] == true)) {
                 $selected = ' selected';
             }
-            $options .= '<option value="' . $key['value'] . '"' . $checked . $selected . '>' . $key['text'] . '</option>';
+            $options .= '<option value="' . self::escapeHtml((string) $key['value']) . '"' . $checked . $selected . '>' . self::escapeHtml((string) $key['text']) . '</option>';
         }
         return $options;
     }
 
+    /**
+     * Build event attributes from trusted application JavaScript.
+     * Escapes HTML attribute boundaries; does not sanitize JavaScript.
+     *
+     * @param array<string, string> $data Event names mapped to JavaScript bodies.
+     */
+    public static function var_To_InlineScripts(array $data): string
+    {
+        $events = '';
+        foreach ($data as $event => $script) {
+            if (!preg_match('/\Aon[a-zA-Z]+\z/', (string) $event)) {
+                throw new \InvalidArgumentException('Invalid event attribute name');
+            }
+            if (!is_string($script)) {
+                throw new \InvalidArgumentException('JavaScript body must be a string');
+            }
+            $events .= ' ' . $event . '="' . self::escapeHtml($script) . '"';
+        }
+        return $events;
+    }
+    /** Function names must refer to trusted application functions. */
     public static function var_To_InlineEvents(array $data): string
     {
         $events = '';
         foreach ($data as $key => $key_value) {
-            $events .= ' ' . $key . '="' . $key_value[0] . '()"';
+            if (!preg_match('/\Aon[a-zA-Z]+\z/', (string) $key)) {
+                throw new \InvalidArgumentException('Invalid event attribute name');
+            }
+            if (!is_array($key_value) || !isset($key_value[0]) || !is_string($key_value[0]) ||
+                !preg_match('/\A[a-zA-Z_$][a-zA-Z0-9_$]*(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)*\z/', $key_value[0])) {
+                throw new \InvalidArgumentException('Invalid JavaScript function name');
+            }
+            $events .= ' ' . $key . '="' . self::escapeHtml($key_value[0] . '()') . '"';
         }
         return $events;
     }
