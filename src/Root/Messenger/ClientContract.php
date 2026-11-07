@@ -2,8 +2,7 @@
 
 namespace SiteApi\Root\Messenger;
 
-use SiteApi\Root\Helpers\LogHelper;
-use SiteApi\Root\Messenger\Recipient;
+use InvalidArgumentException;
 
 abstract class ClientContract
 {
@@ -14,8 +13,8 @@ abstract class ClientContract
 
     function __construct(string $service_name, array $params)
     {
-        if (!in_array($service_name, self::SERVICES)) {
-            LogHelper::log(`{$service_name} not in array SERVICES`, ['service_name' => $service_name, 'services' => json_encode(self::SERVICES)], 'errors/');
+        if (!in_array($service_name, self::SERVICES, true)) {
+            throw new InvalidArgumentException("Unsupported service: {$service_name}");
         }
         $this->service_name = $service_name;
         $this->init($params);
