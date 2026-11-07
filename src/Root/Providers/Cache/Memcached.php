@@ -1,62 +1,90 @@
 <?php
-
 namespace SiteApi\Root\Providers\Cache;
 
-use SiteApi\Root\Helpers\LogHelper;
-use SiteApi\Root\Providers\Cache\CacheProvider;
-use Memcached as GlobalMemcached;
+use Memcached as Client;
+use RuntimeException;
+use SiteApi\Root\Settings\Settings;
 
 class Memcached implements CacheContract
 {
+    public function __construct(private ?Client $client = null) {}
 
-    private static GlobalMemcached | null $instance = null;
-
-    private static function init(): bool
+    private function connection(): Client
     {
-        if (self::$instance === null) {
-            self::$instance = new GlobalMemcached;
-            self::$instance->addServer(CacheEnum::MEMCACHED->getHost(), CacheEnum::MEMCACHED->getPort());
-            if (!self::$instance->getVersion()) {
-                LogHelper::error('Memcached not connected');
-                self::$instance = null;
-                return false;
+        if ($this->client === null) {
+            if (!class_exists(Client::class)) {
+                throw new RuntimeException('PHP memcached extension is required');
             }
+            $client = new Client();
+            if (!$client->addServer(
+                Settings::get_Default('memcached', 'host', 'memcached'),
+                (int) Settings::get_Default('memcached', 'port', '11211')
+            )) {
+                throw new RuntimeException('Cannot configure Memcached server');
+            }
+            $this->client = $client;
         }
-        return true;
+        return $this->client;
     }
 
-    public static function set(string $key, mixed $value, int $period = CacheProvider::PERIOD_DEFAULT): void
+    public function set(string $key, string $value, int $period): void
     {
-        if (!self::init()) {
-            return;
+        if ($period < 0) {
+            throw new \InvalidArgumentException('Cache period must be zero or positive');
         }
-        self::$instance->set($key, $value, $period);
+        // Memcached interprets values above 30 days as Unix timestamps.
+        $expiration = $period > 2592000 ? time() + $period : $period;
+        $client = $this->connection();
+        if (!$client->set($key, $value, $expiration)) {
+            throw new RuntimeException('Memcached write failed: ' . $client->getResultCode());
+        }
     }
 
-    public static function get(string $key): string | array | false
+    public function get(string $key): ?string
     {
-        if (!self::init()) {
-            return false;
+        $client = $this->connection();
+        $value = $client->get($key);
+        $code = $client->getResultCode();
+        if ($code === Client::RES_NOTFOUND) {
+            return null;
         }
-        $v = self::$instance->get($key);
-        return $v;
+        if ($code !== Client::RES_SUCCESS) {
+            throw new RuntimeException('Memcached read failed: ' . $code);
+        }
+        if (!is_string($value)) {
+            throw new \UnexpectedValueException('Expected an encoded cache string');
+        }
+        return $value;
     }
 
-    public static function delete(string $key): void
+    public function delete(string $key): void
     {
-        if (!self::init()) {
-            return;
+        $client = $this->connection();
+        if (!$client->delete($key) && $client->getResultCode() !== Client::RES_NOTFOUND) {
+            throw new RuntimeException('Memcached delete failed: ' . $client->getResultCode());
         }
-        self::$instance->delete($key);
     }
 
-    public static function info(): string
+    public function info(): string
     {
         return CacheEnum::MEMCACHED->value;
     }
 
-    public static function status(): bool
+    public function status(): bool
     {
-        return self::$instance !== null;
+        try {
+            $versions = $this->connection()->getVersion();
+            if (!is_array($versions) || $versions === []) {
+                return false;
+            }
+            foreach ($versions as $version) {
+                if (!is_string($version) || $version === '' || $version === '255.255.255') {
+                    return false;
+                }
+            }
+            return true;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }

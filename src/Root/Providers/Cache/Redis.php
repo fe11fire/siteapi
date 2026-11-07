@@ -1,67 +1,65 @@
 <?php
-
 namespace SiteApi\Root\Providers\Cache;
 
-use Exception;
 use Predis\Client;
-use SiteApi\Root\Helpers\LogHelper;
-use SiteApi\Root\Providers\Cache\CacheProvider;
+use RuntimeException;
+use SiteApi\Root\Settings\Settings;
 
 class Redis implements CacheContract
 {
-    private static Client | null $instance = null;
+    public function __construct(private ?Client $client = null) {}
 
-    private static function init(): bool
+    private function connection(): Client
     {
-        if (self::$instance === null) {
-            self::$instance = new Client([
-                'host' => CacheEnum::REDIS->getHost(),
-                'port' => CacheEnum::REDIS->getPort(),
-            ]);
-            try {
-                self::$instance->getConnection();
-                self::$instance->ping();
-            } catch (Exception $e) {
-                self::$instance = null;
-                LogHelper::error('Redis not connected');
-                return false;
-            }
-        }
-        return true;
+        return $this->client ??= new Client([
+            'host' => Settings::get_Default('redis', 'host', 'redis'),
+            'port' => (int) Settings::get_Default('redis', 'port', '6379'),
+        ]);
     }
 
-    public static function set(string $key, mixed $value, int $period = CacheProvider::PERIOD_DEFAULT): void
+    /** Keep operational failures consistent across cache adapters. */
+    private function execute(callable $operation): mixed
     {
-        if (!self::init()) {
-            return;
+        try {
+            return $operation($this->connection());
+        } catch (\Throwable $error) {
+            throw new RuntimeException('Redis operation failed', 0, $error);
         }
-        self::$instance->set($key, json_encode($value), 'EX', $period);
+    }
+    public function set(string $key, string $value, int $period): void
+    {
+        if ($period < 0) {
+            throw new \InvalidArgumentException('Cache period must be zero or positive');
+        }
+        $result = $period === 0
+            ? $this->execute(fn(Client $client) => $client->set($key, $value))
+            : $this->execute(fn(Client $client) => $client->set($key, $value, 'EX', $period));
+        if ((string) $result !== 'OK') {
+            throw new RuntimeException('Redis write failed');
+        }
     }
 
-    public static function get(string $key): string | array | false
+    public function get(string $key): ?string
     {
-        if (!self::init()) {
-            return false;
-        }
-        $v = self::$instance->get($key);
-        return $v == null ? false : json_decode($v);
+        return $this->execute(fn(Client $client) => $client->get($key));
     }
 
-    public static function delete(string $key): void
+    public function delete(string $key): void
     {
-        if (!self::init()) {
-            return;
-        }
-        self::$instance->del($key);
+        $this->execute(fn(Client $client) => $client->del([$key]));
     }
 
-    public static function info(): string
+    public function info(): string
     {
         return CacheEnum::REDIS->value;
     }
 
-    public static function status(): bool
+    public function status(): bool
     {
-        return self::$instance !== null;
+        try {
+            return (string) $this->connection()->ping() === 'PONG';
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }
