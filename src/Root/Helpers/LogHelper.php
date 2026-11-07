@@ -5,51 +5,63 @@ namespace SiteApi\Root\Helpers;
 use Monolog\Level;
 use SiteApi\Root\Providers\Logger\LoggerProvider;
 
-
 class LogHelper
 {
+    /** Mask known secret fields before the context reaches a logger. */
+    private static function redactContext(mixed $value, int $depth = 0): mixed
+    {
+        if ($depth >= 20) {
+            return '[MAX_DEPTH]';
+        }
+        if (is_object($value)) {
+            // Inspect public properties only; do not invoke custom serializers.
+            $value = get_object_vars($value);
+        }
+        if (!is_array($value)) {
+            return $value;
+        }
+
+        $result = [];
+        foreach ($value as $key => $item) {
+            $normalized = strtolower(str_replace(['-', '_', ' '], '', (string) $key));
+            if (in_array($normalized, [
+                'password', 'passwd', 'pwd', 'secret', 'clientsecret',
+                'token', 'accesstoken', 'refreshtoken', 'idtoken', 'bottoken',
+                'authorization', 'proxyauthorization', 'cookie', 'setcookie',
+                'apikey', 'xapikey', 'privatekey',
+            ], true)) {
+                $result[$key] = '[REDACTED]';
+            } else {
+                $result[$key] = self::redactContext($item, $depth + 1);
+            }
+        }
+        return $result;
+    }
+
     public static function log(
         string $message,
         array $params = [],
         $folder = 'common/',
-        $debug = true,
+        $debug = false,
         $status = Level::Info,
         $send = false,
         $tag = 'error'
     ) {
         $log = LoggerProvider::get($folder, $status);
+        $params = self::redactContext($params);
 
         if (count($params) == 0) {
             $params = ['Params' => 'empty'];
-        } else {
-            foreach ($params as $key => &$value) {
-                if (is_object($value) || is_array($value)) {
-                    $d = '';
-                    foreach ($value as $k => $v) {
-                        if (is_object($v) || is_array($v)) {
-                            $d .= $k . ': ' . json_encode($v) . ', ';
-                        } else {
-                            $d .= $k . ': ' . $v . ', ';
-                        }
-                    }
-                    $value = $d;
-                } else {
-                    if ($value != null) {
-                        if (strlen($value) > 1000) {
-                            $value = substr($value, 1, 1000) . '..';
-                        }
-                    }
-                }
-            }
         }
 
         if ($debug) {
-            $bt = debug_backtrace();
-            $Debug_str = '';
-            foreach ($bt as $key) {
-                $Debug_str .= (isset($key['line']) ? $key['line'] . ' - ' : '') . (isset($key['file']) ? $key['file'] : '') . PHP_EOL . '{' . json_encode($key['args']) . '}' . PHP_EOL;
+            $trace = [];
+            foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 20) as $frame) {
+                $trace[] = array_intersect_key($frame, array_flip([
+                    'file', 'line', 'class', 'type', 'function',
+                ]));
             }
-            $params = $params + ['debug' => $Debug_str];
+            $params = $params + ['debug' => $trace];
         }
         $log->log($status, $message, $params);
     }
