@@ -95,11 +95,25 @@ class Vars
 
     public static function make_JS_var(string $JS_name_variable, $data)
     {
-        echo '<script>var ' . $JS_name_variable . ' = ' . json_encode($data, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . ';</script>';
+        // Restrict the API to portable ASCII identifiers, not expressions or property paths.
+        $reserved = [
+            'await', 'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger',
+            'default', 'delete', 'do', 'else', 'enum', 'export', 'extends', 'false',
+            'finally', 'for', 'function', 'if', 'implements', 'import', 'in',
+            'instanceof', 'interface', 'let', 'new', 'null', 'package', 'private',
+            'protected', 'public', 'return', 'static', 'super', 'switch', 'this',
+            'throw', 'true', 'try', 'typeof', 'var', 'void', 'while', 'with', 'yield',
+            'eval', 'arguments',
+        ];
+        if (!preg_match('/\A[a-zA-Z_$][a-zA-Z0-9_$]*\z/', $JS_name_variable)
+            || in_array($JS_name_variable, $reserved, true)) {
+            throw new \InvalidArgumentException('Invalid JavaScript variable name');
+        }
+        echo '<script>var ' . $JS_name_variable . ' = ' . json_encode($data, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) . ';</script>';
     }
 
     public static function console_log($data)
     {
-        echo '<script>console.log(' . json_encode($data, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . ');</script>';
+        echo '<script>console.log(' . json_encode($data, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) . ');</script>';
     }
 }
