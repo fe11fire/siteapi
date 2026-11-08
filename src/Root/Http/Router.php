@@ -88,6 +88,27 @@ class Router
         exit;
     }
 
+    /** Encodes added query values; the route itself must be trusted application code. */
+    public static function redirectSafe(string $name, ?array $new_Params = null): void
+    {
+        self::redirect(self::buildRedirectUrl($name, $new_Params));
+    }
+
+    private static function buildRedirectUrl(string $name, ?array $params): string
+    {
+        if (preg_match('/[\r\n]/', $name)) {
+            throw new \InvalidArgumentException('Redirect route must not contain line breaks');
+        }
+        $parts = explode('#', $name, 2);
+        $url = $parts[0];
+        $query = http_build_query($params ?? [], '', '&', PHP_QUERY_RFC3986);
+        if ($query !== '') {
+            $separator = str_contains($url, '?') ? (str_ends_with($url, '?') || str_ends_with($url, '&') ? '' : '&') : '?';
+            $url .= $separator . $query;
+        }
+        return $url . (isset($parts[1]) ? '#' . $parts[1] : '');
+    }
+
     private static function make_Request_Route(): void
     {
         $parts = parse_url(self::$request);
