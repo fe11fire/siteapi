@@ -209,6 +209,28 @@ $value = CacheProvider::remember('calculated', fn() => calculateValue(), 300);
 При поиске по уникальному признаку закрепляйте уникальность также ограничением в БД.
 Не добавляйте `LIMIT 1`, если требуется обнаруживать несколько совпадений.
 
+Условия с `null` означают SQL `IS NULL`, без добавления значения в параметры PDO:
+
+```php
+$where = ['user_id' => 42, 'deleted_at' => null];
+// WHERE (user_id = ?) AND (deleted_at IS NULL)
+
+$where = ['verified_at' => [null, 'IS NOT NULL']];
+// WHERE (verified_at IS NOT NULL)
+
+$where = [
+    'status' => 'active',
+    new \SiteApi\Root\Helpers\RawCondition('updated_at > created_at AND age >= ?', [18]),
+];
+```
+
+RawCondition принимает доверенное SQL-выражение и список позиционных значений для PDO.
+Не вставляйте пользовательские данные в его SQL-строку. Условия объединяются через AND,
+выражение RawCondition заключается в скобки. Прежнюю запись `['deleted_at IS NULL' => null]`
+нужно заменить на `['deleted_at' => null]` или явный RawCondition.
+Для null допустимы только `IS NULL` и `IS NOT NULL`; сравнение `[null, '=']` отклоняется.
+Обычные сравнения вида `['age' => [18, '>=']]` сохранены.
+
 Соединение PDO создаётся при первом SQL-запросе или `beginTransaction()` и повторно
 используется до завершения обычного PHP-запроса (PHP-FPM/Apache). Результаты SELECT
 считываются в массивы и не меняются при следующих запросах. Изменение Settings после

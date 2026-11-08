@@ -1,6 +1,7 @@
 <?php
 /** Real PDO/SQLite tests for connection reuse and transaction semantics; no MySQL required. */
 require dirname(__DIR__) . '/src/Root/Helpers/DBHelper.php';
+require dirname(__DIR__) . '/src/Root/Helpers/RawCondition.php';
 use SiteApi\Root\Helpers\DBHelper;
 function check(bool $value, string $message): void {
     if (!$value) throw new RuntimeException($message);
@@ -32,7 +33,27 @@ try {
         throw new RuntimeException('Nested transaction should be rejected');
     } catch (PDOException) {}
     DBHelper::rollBack();
-    echo "PDO reuse, commit, rollback, transaction state and independent results passed\n";
+    DBHelper::universal('CREATE TABLE nullable_items (id INTEGER PRIMARY KEY, deleted_at TEXT, age INTEGER)');
+    DBHelper::universal('INSERT INTO nullable_items VALUES (1, NULL, 20), (2, ?, 30)', ['2026-01-01']);
+    DBHelper::select('*', ['nullable_items'], '', ['deleted_at' => null, 'age' => [18, '>=']], '', $rows);
+    check(count($rows) === 1 && $rows[0]['id'] === 1, 'NULL with regular comparison');
+    DBHelper::select('*', ['nullable_items'], '', ['deleted_at' => [null, 'IS NOT NULL']], '', $rows);
+    check(count($rows) === 1 && $rows[0]['id'] === 2, 'IS NOT NULL');
+    DBHelper::select('*', ['nullable_items'], '', [new \SiteApi\Root\Helpers\RawCondition('age > ? OR id = ?', [25, 99]), 'deleted_at' => [null, 'IS NOT NULL']], '', $rows);
+    check(count($rows) === 1 && $rows[0]['id'] === 2, 'Raw condition with positional values');
+    DBHelper::update('nullable_items', ['age' => 21], ['deleted_at' => null], false);
+    check(DBHelper::universal('SELECT age FROM nullable_items WHERE id = 1', fetch: true)[0]['age'] === 21, 'UPDATE NULL condition');
+    DBHelper::delete('nullable_items', ['deleted_at' => [null, 'IS NOT NULL']], false);
+    check(count(DBHelper::universal('SELECT * FROM nullable_items', fetch: true)) === 1, 'DELETE NOT NULL condition');
+    $prepare = new ReflectionMethod(DBHelper::class, 'prepare_Where');
+    foreach ([['deleted_at IS NULL' => null], ['deleted_at' => [null, '=']]] as $invalid) {
+        $args = [];
+        try {
+            $prepare->invokeArgs(null, [$invalid, &$args]);
+            throw new RuntimeException('Expected invalid null expression');
+        } catch (InvalidArgumentException) {}
+    }
+    echo "PDO reuse, transactions, NULL, RawCondition, SELECT/UPDATE/DELETE checks passed\n";
 } finally {
     if (DBHelper::inTransaction()) DBHelper::rollBack();
     $connection->setValue(null, null);

@@ -307,25 +307,35 @@ class DBHelper
     {
         $where_string = ' WHERE';
         foreach ($where as $key => $value) {
-            if (isset($value)) {
-                $hash_ind = strpos($key, '#');
-                if ($hash_ind !== false) {
-                    $key = substr($key, 0, $hash_ind);
+            if ($value instanceof RawCondition) {
+                $where_string .= ' (' . $value->sql . ') AND';
+                array_push($args, ...$value->bindings);
+                continue;
+            }
+            $key = explode('#', (string) $key, 2)[0];
+            if ($value === null || (is_array($value) && array_key_exists(0, $value) && $value[0] === null)) {
+                // Expressions must be explicit RawCondition objects, not disguised column names.
+                if (!preg_match('/\A(?:`[^`]+`|[a-zA-Z_][a-zA-Z0-9_]*)(?:\.(?:`[^`]+`|[a-zA-Z_][a-zA-Z0-9_]*))*\z/', $key)) {
+                    throw new \InvalidArgumentException('NULL conditions require a column name; use RawCondition for SQL expressions');
                 }
-                if (is_array($value)) {
+                $operator = $value === null ? 'IS NULL' : strtoupper(trim((string) ($value[1] ?? '')));
+                if (!in_array($operator, ['IS NULL', 'IS NOT NULL'], true)) {
+                    throw new \InvalidArgumentException('NULL requires IS NULL or IS NOT NULL');
+                }
+                $where_string .= ' (' . $key . ' ' . $operator . ') AND';
+                continue;
+            }
+            if (is_array($value)) {
 
-                    if (is_array($value[1])) {
-                        $where_string .= ' ' . $value[1][2] . '(' . $key . ' ' . $value[1][0] . ' ?)' . $value[1][3] . ' ' . $value[1][1];
-                    } else {
-                        $where_string .= ' (' . $key . ' ' . $value[1] . ' ?) AND';
-                    }
-                    array_push($args, $value[0]);
+                if (is_array($value[1])) {
+                    $where_string .= ' ' . $value[1][2] . '(' . $key . ' ' . $value[1][0] . ' ?)' . $value[1][3] . ' ' . $value[1][1];
                 } else {
-                    $where_string .= ' (' . $key . ' = ?) AND';
-                    array_push($args, $value);
+                    $where_string .= ' (' . $key . ' ' . $value[1] . ' ?) AND';
                 }
+                array_push($args, $value[0]);
             } else {
-                $where_string .= ' (' . $key . ') AND';
+                $where_string .= ' (' . $key . ' = ?) AND';
+                array_push($args, $value);
             }
         }
         if (count($where) > 0) {
