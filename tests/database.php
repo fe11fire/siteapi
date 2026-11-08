@@ -45,6 +45,21 @@ try {
     check(DBHelper::universal('SELECT age FROM nullable_items WHERE id = 1', fetch: true)[0]['age'] === 21, 'UPDATE NULL condition');
     DBHelper::delete('nullable_items', ['deleted_at' => [null, 'IS NOT NULL']], false);
     check(count(DBHelper::universal('SELECT * FROM nullable_items', fetch: true)) === 1, 'DELETE NOT NULL condition');
+    DBHelper::universal('CREATE TABLE orders (id INTEGER PRIMARY KEY, status TEXT)');
+    DBHelper::universal("INSERT INTO orders VALUES (1, 'new'), (2, 'new'), (3, 'paid')");
+    foreach ([
+        ['*', [], '', 3],
+        ['*', ['status' => 'new'], '', 2],
+        ['*', ['status' => 'missing'], '', 0],
+        ['status', [], 'GROUP BY status', 2],
+        ['status, COUNT(*) AS total', [], 'GROUP BY status HAVING COUNT(*) > 1', 1],
+        ['DISTINCT status', [], '', 2],
+        ['*', [], 'ORDER BY id LIMIT 1 OFFSET 1', 1],
+        ['*', [], 'LIMIT 0', 0],
+    ] as [$columns, $where, $after, $expected]) {
+        check(DBHelper::selectCount($columns, ['orders'], '', $where, $after) === $expected, 'Count preserves SELECT semantics: ' . $after);
+    }
+    check(DBHelper::selectCount('o.id AS order_id, i.id AS item_id', ['orders o'], 'JOIN items i ON i.id = o.id', [], '') === 1, 'JOIN with distinct column aliases');
     $prepare = new ReflectionMethod(DBHelper::class, 'prepare_Where');
     foreach ([['deleted_at IS NULL' => null], ['deleted_at' => [null, '=']]] as $invalid) {
         $args = [];

@@ -74,12 +74,17 @@ class DBHelper
         bool $logging = false,
         bool $debug = false
     ): int {
-        if (
-            self::select($columns, $table, $beforeWhere, $where, $afterWhere, $rows, $logging, $debug)
-        ) {
-            return count($rows);
+        $args = [];
+        $query = self::buildSelect($columns, $table, $beforeWhere, $where, $afterWhere, $args);
+        $sql = 'SELECT COUNT(*) AS row_count FROM (' . $query . ') AS counted_rows';
+        if ($debug) {
+            LogHelper::log('SelectCount Debug', ['sql' => $sql, 'args' => $args], 'debug/');
         }
-        return 0;
+        if ($logging) {
+            LogHelper::log('SelectCount Logging', ['sql' => $sql, 'args' => $args], 'queries/');
+        }
+        $rows = self::universal($sql, $args, true);
+        return (int) $rows[0]['row_count'];
     }
 
     /**
@@ -106,11 +111,7 @@ class DBHelper
         bool $debug = false
     ): bool {
         $args = [];
-        $where = self::prepare_Where($where, $args);
-        foreach ($tables as &$table) {
-            $table = self::DB_PREFIX . $table;
-        }
-        $sql = "SELECT " . $columns . " FROM " . implode(',', $tables) . " " . $beforeWhere . " " . $where . ' ' . $afterWhere;
+        $sql = self::buildSelect($columns, $tables, $beforeWhere, $where, $afterWhere, $args);
         if ($debug) {
             LogHelper::log('Select Debug', ['args' => $args, 'where' => $where, 'sql' => $sql], 'debug/');
         }
@@ -125,6 +126,21 @@ class DBHelper
             throw new Exception($e->getMessage());
             return false;
         }
+    }
+
+    /** Build the same SELECT for retrieval and counting, including bound conditions. */
+    private static function buildSelect(
+        string $columns,
+        array $tables,
+        string $beforeWhere,
+        array $where,
+        string $afterWhere,
+        array &$args
+    ): string {
+        $condition = self::prepare_Where($where, $args);
+        $tables = array_map(fn($table) => self::DB_PREFIX . $table, $tables);
+        return 'SELECT ' . $columns . ' FROM ' . implode(',', $tables)
+            . ' ' . $beforeWhere . ' ' . $condition . ' ' . $afterWhere;
     }
 
     public static function insert(
