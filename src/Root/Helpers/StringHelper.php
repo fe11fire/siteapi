@@ -33,12 +33,12 @@ class StringHelper
         bool $null_number = false,
         string $delimeter = ' '
     ): string {
-        $cases = array(2, 0, 1, 1, 1, 2);
-        if ($null_number) {
-            return $after[($number % 100 > 4 && $number % 100 < 20) ? 2 : $cases[min($number % 10, 5)]];
-        } else {
-            return $number . $delimeter . $after[($number % 100 > 4 && $number % 100 < 20) ? 2 : $cases[min($number % 10, 5)]];
-        }
+        $cases = [2, 0, 1, 1, 1, 2];
+        // Take the remainder first: abs(PHP_INT_MIN) would become a float.
+        $lastTwo = abs($number % 100);
+        $last = abs($number % 10);
+        $form = $after[($lastTwo > 4 && $lastTwo < 20) ? 2 : $cases[min($last, 5)]];
+        return $null_number ? $form : $number . $delimeter . $form;
     }
 
 
