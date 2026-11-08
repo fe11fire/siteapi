@@ -138,7 +138,7 @@ class Router
         return self::$params;
     }
 
-    public static function get_Param_by_Name(string $name): string | bool
+    public static function get_Param_by_Name(string $name): mixed
     {
         if (isset(self::$params) && isset(self::$params[$name])) {
             // LogHelper::log('get_Param_by_Name', ['Param' => $name, 'Value' => self::$params[$name]]);
