@@ -3,6 +3,7 @@
 namespace SiteApi\Root\Http;
 
 use SiteApi\Root\Helpers\LogHelper;
+use SiteApi\Root\Helpers\DatabaseErrorContext;
 use Throwable;
 
 class ErrorHandler
@@ -17,16 +18,19 @@ class ErrorHandler
                 'file', 'line', 'class', 'type', 'function',
             ]));
         }
+        $databaseError = DatabaseErrorContext::from($error);
         $context = [
             'error_id' => $errorId,
             'type' => $error::class,
-            'message' => $error->getMessage(),
+            'message' => $databaseError !== null ? 'Database operation failed' : $error->getMessage(),
             'file' => $error->getFile(),
             'line' => $error->getLine(),
             'method' => $_SERVER['REQUEST_METHOD'] ?? '',
             'path' => $path,
             'trace' => $trace,
         ];
+
+        if ($databaseError !== null) $context['database'] = $databaseError;
 
         try {
             LogHelper::error('Unhandled request error', $context);

@@ -78,10 +78,10 @@ class DBHelper
         $query = self::buildSelect($columns, $table, $beforeWhere, $where, $afterWhere, $args);
         $sql = 'SELECT COUNT(*) AS row_count FROM (' . $query . ') AS counted_rows';
         if ($debug) {
-            LogHelper::log('SelectCount Debug', ['sql' => $sql, 'args' => $args], 'debug/');
+            self::logQuery('debug', $sql, $args, true);
         }
         if ($logging) {
-            LogHelper::log('SelectCount Logging', ['sql' => $sql, 'args' => $args], 'queries/');
+            self::logQuery('select_count', $sql, $args);
         }
         $rows = self::universal($sql, $args, true);
         return (int) $rows[0]['row_count'];
@@ -113,18 +113,17 @@ class DBHelper
         $args = [];
         $sql = self::buildSelect($columns, $tables, $beforeWhere, $where, $afterWhere, $args);
         if ($debug) {
-            LogHelper::log('Select Debug', ['args' => $args, 'where' => $where, 'sql' => $sql], 'debug/');
+            self::logQuery('debug', $sql, $args, true);
         }
         try {
             if ($logging) {
-                LogHelper::log('Select Logging', ['args' => $args, 'where' => $where, 'sql' => $sql], 'queries/');
+                self::logQuery('select', $sql, $args);
             }
             $rows = self::universal($sql, $args, true);
             return true;
         } catch (Exception $e) {
-            LogHelper::log('select', [$e->getMessage()], 'errors/');
-            throw new Exception($e->getMessage());
-            return false;
+            self::logFailure('select', $e);
+            throw $e;
         }
     }
 
@@ -162,19 +161,18 @@ class DBHelper
         $sql = "INSERT INTO `" . self::DB_PREFIX . $table . "` (" . substr($cols, 1) . ") VALUES (" . substr($values, 1) . ")";
 
         if ($debug) {
-            LogHelper::log('Insert Debug', ['sql' => $sql, 'args' => $args]);
+            self::logQuery('debug', $sql, $args, true);
         }
 
         try {
             $id = self::universal($sql, $args, false, true);
             if ($logging) {
-                LogHelper::log('insert', ['В таблицу ' . $table . ' добавлена запись ID = ' . $id]);
+                self::logQuery('insert', $sql, $args);
             }
             return true;
         } catch (Exception $e) {
-            LogHelper::log('insert', [$e->getMessage()], 'errors/');
-            throw new Exception($e->getMessage());
-            return false;
+            self::logFailure('insert', $e);
+            throw $e;
         }
     }
 
@@ -187,18 +185,17 @@ class DBHelper
         $sql = "DELETE FROM `" . self::DB_PREFIX . $table . "` " . $where;
 
         if ($debug) {
-            LogHelper::log('Delete Debug', ['sql' => $sql, 'args' => $args]);
+            self::logQuery('debug', $sql, $args, true);
         }
         try {
             self::universal($sql, $args, false);
             if ($logging) {
-                LogHelper::log('delete', ['0' => 'В таблице ' . $table . ' удалена запись', 'Where' => $where]);
+                self::logQuery('delete', $sql, $args);
             }
             return true;
         } catch (Exception $e) {
-            LogHelper::log('delete', [$e->getMessage()], 'errors/');
-            throw new Exception($e->getMessage());
-            return false;
+            self::logFailure('delete', $e);
+            throw $e;
         }
     }
 
@@ -219,22 +216,45 @@ class DBHelper
 
         $sql = "UPDATE `" . self::DB_PREFIX . $table . "` SET " . substr($set, 1) . $where;
         if ($debug) {
-            LogHelper::log('Update Debug', ['sql' => $sql, 'args' => $args]);
+            self::logQuery('debug', $sql, $args, true);
         }
         try {
             self::universal($sql, $args, false);
             if ($logging) {
-                LogHelper::log('update', ['0' => 'В таблице ' . $table . ' обновлены записи', 'Set' => $Set, 'Where' => $where]);
+                self::logQuery('update', $sql, $args);
             }
             return true;
         } catch (Exception $e) {
-            LogHelper::log('update', [$e->getMessage()], 'errors/');
-            throw new Exception($e->getMessage());
-            return false;
-            return false;
+            self::logFailure('update', $e);
+            throw $e;
         }
     }
 
+
+    private static function logQuery(string $operation, string $sql, array $args, bool $debug = false): void
+    {
+        $context = ['operation' => $operation, 'parameter_count' => count($args)];
+        if ($debug) $context['sql'] = $sql;
+        self::writeLog('Database query', $context, $debug ? 'debug/' : 'queries/');
+    }
+
+    private static function logFailure(string $operation, Exception $error): void
+    {
+        $context = ['operation' => $operation]
+            + (DatabaseErrorContext::from($error) ?? ['exception_type' => $error::class]);
+        self::writeLog('Database operation failed', $context, 'errors/', true);
+    }
+
+    private static function writeLog(string $message, array $context, string $folder, bool $error = false): void
+    {
+        try {
+            if ($error) LogHelper::error($message, $context);
+            else LogHelper::log($message, $context, $folder);
+        } catch (\Throwable) {
+            // Logging failure must not turn a completed write into an apparent database failure.
+            error_log($message . ': ' . json_encode($context, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR));
+        }
+    }
 
     /** One connection per ordinary PHP request; no persistent connections or automatic retries. */
     private static function getConnection(): PDO

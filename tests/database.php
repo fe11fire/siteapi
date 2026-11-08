@@ -1,6 +1,7 @@
 <?php
 /** Real PDO/SQLite tests for connection reuse and transaction semantics; no MySQL required. */
 require dirname(__DIR__) . '/src/Root/Helpers/DBHelper.php';
+require dirname(__DIR__) . '/src/Root/Helpers/DatabaseErrorContext.php';
 require dirname(__DIR__) . '/src/Root/Helpers/RawCondition.php';
 use SiteApi\Root\Helpers\DBHelper;
 function check(bool $value, string $message): void {
