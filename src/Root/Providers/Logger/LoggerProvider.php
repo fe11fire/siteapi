@@ -15,9 +15,14 @@ class LoggerProvider implements LoggerContract
 
     private static LoggerContract $instance;
 
-    public static function init(string $name)
+    public static function init(LoggerEnum|string $logger): void
     {
-        self::$instance = LoggerEnum::tryFrom($name)->getProvider();
+        $provider = $logger instanceof LoggerEnum ? $logger : LoggerEnum::tryFrom($logger);
+        if ($provider === null) {
+            $allowed = implode(', ', array_map(fn(LoggerEnum $case) => $case->value, LoggerEnum::cases()));
+            throw new \InvalidArgumentException('Unknown logger "' . $logger . '". Allowed values: ' . $allowed);
+        }
+        self::$instance = $provider->getProvider();
     }
 
     private static function initDefault()

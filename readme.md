@@ -162,7 +162,18 @@ Middleware маршрута должен существовать и реали�
 <br>
 
 ### Логирование
-<br>
+
+```php
+use SiteApi\Root\Providers\Logger\{LoggerProvider, LoggerEnum};
+
+LoggerProvider::init(LoggerEnum::FILE);
+LoggerProvider::init('stdout'); // строки также поддерживаются
+```
+
+Допустимые значения определены в LoggerEnum. Неизвестное имя вызывает
+InvalidArgumentException со списком допустимых значений; текущий логгер при этом не меняется.
+Без явной инициализации используется FILE.
+
 
 ### Кэширование
 

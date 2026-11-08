@@ -14,7 +14,6 @@ enum LoggerEnum: string
         return match ($this) {
             LoggerEnum::FILE => new FileLogger(),
             LoggerEnum::STDOUT => new StdoutLogger(),
-            default => new FileLogger(),
         };
     }
 }
