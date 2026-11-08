@@ -49,7 +49,7 @@ class Router
 
         foreach (self::$rules as $rule) {
 
-            if ($folder . $rule['name'] == $name) {
+            if (($folder . $rule['name']) === $name) {
                 self::$path = $folder . $rule['path'];
 
                 if (isset($rule['address'])) {
