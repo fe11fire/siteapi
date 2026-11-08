@@ -2,42 +2,28 @@
 
 namespace SiteApi\Root\Messenger;
 
-use Exception;
-
-class Message
+final class Message
 {
-    const PARAM_ATTACHMENTS = 'attachments';
-    private TemplateContract $template;
-    private array $attachments = [];
-
-    public function __construct(array $data, array $params = [], string $templateContractClass = '', ?string $replyMarkupClass = null)
-    {
-        if (!is_subclass_of($templateContractClass, TemplateContract::class)) {
-            throw new Exception('templateContractClass is not subclass of TemplateContract');
+    /** @param Attachment[] $attachments @param Link[] $actions */
+    public function __construct(
+        public readonly string $subject = '',
+        public readonly string $text = '',
+        public readonly array $attachments = [],
+        public readonly array $actions = [],
+        public readonly ?string $reference = null,
+    ) {
+        foreach ([$subject, $text] as $value) {
+            if (!preg_match('//u', $value)) throw new \InvalidArgumentException('Message must be UTF-8');
         }
-        if ((isset($params[self::PARAM_ATTACHMENTS])) && (is_array($params[self::PARAM_ATTACHMENTS]))) {
-            $this->attachments = $params[self::PARAM_ATTACHMENTS];
+        foreach ($attachments as $item) {
+            if (!$item instanceof Attachment) throw new \InvalidArgumentException('Expected Attachment');
         }
-        $this->template = new $templateContractClass($data, $params, $replyMarkupClass);
+        foreach ($actions as $item) {
+            if (!$item instanceof Link) throw new \InvalidArgumentException('Expected Link');
+        }
+        if (trim($subject . $text) === '' && !$attachments && !$actions) {
+            throw new \InvalidArgumentException('Message is empty');
+        }
     }
 
-    public function getMessage(ClientContract $client)
-    {
-        return $this->template->makeMessage($client);
-    }
-
-    public function hasAttachments(): bool
-    {
-        return count($this->attachments) > 0;
-    }
-
-    public function getAttachments(): array
-    {
-        return $this->attachments;
-    }
-
-    public function getReplyMarkup(ClientContract $client)
-    {
-        return $this->template->makeReplyMarkup($client);
-    }
 }

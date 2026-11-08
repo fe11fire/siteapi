@@ -204,3 +204,93 @@ $value = CacheProvider::remember('calculated', fn() => calculateValue(), 300);
 
 ### Режимы разработки
 <br>
+
+
+## Отправка сообщений: Telegram и email
+
+Новый API заменяет прежний `Sender::send(...)`, массив адресов Recipient и обязательные
+классы шаблонов Message. Поддерживаются только исходящие сообщения через `telegram` и `email`.
+Приём команд и событий, webhook и сценарии диалогов не реализованы.
+
+```php
+use SiteApi\Root\Messenger\{Sender, Message, Recipient, Attachment, Link};
+use SiteApi\Root\Clients\Telegram\Client as TelegramClient;
+use SiteApi\Root\Clients\Email\Client as EmailClient;
+
+$sender = new Sender(
+    new TelegramClient(token: Settings::get('telegram', 'token')),
+    new EmailClient(
+        host: Settings::get('smtp', 'host'),
+        from: Settings::get('smtp', 'from'),
+        username: Settings::get('smtp', 'username'),
+        password: Settings::get('smtp', 'password'),
+        port: 587,
+        encryption: 'tls', // tls (STARTTLS) или ssl (implicit TLS)
+    ),
+);
+
+$message = new Message(
+    subject: 'Заказ №125 готов',
+    text: "Ваш заказ готов к выдаче.\nЗабрать его можно до 20:00.",
+    attachments: [new Attachment('/absolute/path/receipt.pdf', 'Чек.pdf', 'application/pdf')],
+    actions: [new Link('Посмотреть заказ', 'https://example.com/orders/125')],
+    reference: 'order-125', // внутреннее поле, получателю не показывается
+);
+
+$result = $sender->send($message, new Recipient('telegram', '-123456789'));
+// Для email тот же Message:
+$result = $sender->send($message, new Recipient('email', 'user@example.com'));
+
+$result->getStatus(); // success, partial, failed
+$result->operationId; // код для поиска ошибки в журнале
+$result->getParts();  // part, success, provider_id для каждой выполненной попытки
+```
+
+Можно настроить только один клиент. Настройки читаются приложением и передаются в конструктор;
+пароли и токены не записываются в журнал модулем. Telegram использует HTTPS через PHP cURL,
+email — PHPMailer через SMTP с проверкой TLS. Нужны Composer-зависимости и PHP ext-curl.
+Текст — UTF-8, без пользовательской HTML-разметки; специальные символы экранируются.
+Email содержит HTML и текстовую альтернативу, тема без subject — «Сообщение».
+Telegram оформляет subject жирным, actions — отдельными рядами inline-кнопок.
+Если темы и текста нет, Telegram отправляет «Вложения» перед файлами или «Полезные ссылки»
+перед кнопками. В email для пустого тела также используется короткая подпись.
+
+Вложения — только читаемые локальные файлы, ссылки-действия — только HTTP(S).
+Telegram проверяет длину текста (до 4096 UTF-16 единиц, консервативно), до 100 кнопок,
+подпись кнопки до 256 байт и файл до 50 MB перед первой отправкой. Авторазбиения нет.
+SMTP-ограничения размера задаются почтовым сервером; отказ вернётся как failed.
+В Telegram сначала отправляется текст, затем документы по порядку. Если текст не отправлен,
+документы не отправляются; ошибка отдельного документа не отменяет остальные попытки.
+Части, до которых выполнение не дошло, отсутствуют в getParts().
+Автоматических повторов нет. После сетевого таймаута результат доставки может быть неизвестен:
+повторная отправка способна создать дубликат.
+
+Ошибки данных/конфигурации выбрасывают исключения до отправки. Ошибки доставки возвращаются
+в SendResult и логируются через LogHelper с operation_id, каналом и частью сообщения.
+Тела сообщений, адреса, reference и сырые сообщения исключений провайдера не логируются:
+они могут содержать секреты. При отказе LogHelper используется error_log().
+Success означает принятие сервисом, а не прочтение или гарантированную доставку во входящие.
+
+Офлайн-проверки без реальной отправки: `php tests/messenger.php` и `php tests/email.php`.
+Email-проверка использует двойник PHPMailer; реальную SMTP-доставку она не подтверждает.
+
+
+### Структура модуля отправки
+
+`Channel` задаёт два разрешённых канала. `Recipient` принимает enum или строку,
+но хранит `Channel`. `ClientContract` содержит только `getChannel(): Channel`
+и `send(Message, Recipient): SendResult`. `Sender` получает клиентов через конструктор.
+
+`Message` хранит содержимое и проверяет его структуру; оформление вынесено в
+`MessagePresentation`. `SendResult` только хранит исходы попыток и вычисляет статус.
+Ошибочная часть дополнительно содержит безопасную категорию `reason`:
+`timeout`, `transport_failed`, `provider_rejected` или общую `delivery_failed`.
+Для исключений PHPMailer пока используется общая категория; классификация
+аутентификации по тексту исключения не выполняется.
+
+Оба клиента принимают необязательный `DeliveryErrorReporter`. По умолчанию это
+`LogDeliveryErrorReporter`, использующий LogHelper и резервный error_log().
+Собственная реализация должна обеспечивать отказоустойчивое логирование и не выбрасывать
+исключения из report(). В результат не попадают исходные исключения и ответы сервисов.
+Добавление третьего канала потребует расширения Channel и проверки адреса Recipient —
+это осознанное ограничение текущей версии, а не автоматически подключаемая система плагинов.

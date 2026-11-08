@@ -2,31 +2,16 @@
 
 namespace SiteApi\Root\Messenger;
 
-use InvalidArgumentException;
-use RuntimeException;
-
-class Recipient
+final class Recipient
 {
-    const FIELD_MESSAGE = 'message';
-    const FIELD_TITLE = 'title';
-    protected array $addresses = [];
+    public readonly Channel $channel;
 
-    function __construct(array $addresses)
+    public function __construct(Channel|string $channel, public readonly string $address)
     {
-        foreach ($addresses as $service => $address) {
-            if (!in_array($service, ClientContract::SERVICES, true)) {
-                throw new InvalidArgumentException("Unsupported service: {$service}");
-            }
-            $this->addresses[$service] = $address;
-        }
-    }
-
-    function getAddress(ClientContract $client): string
-    {
-        $service = $client->getServiceName();
-        if (!isset($this->addresses[$service])) {
-            throw new RuntimeException("Recipient address is missing for service: {$service}");
-        }
-        return $this->addresses[$service];
+        $this->channel = $channel instanceof Channel ? $channel : (Channel::tryFrom($channel) ?? throw new \InvalidArgumentException('Unsupported channel'));
+        $valid = $this->channel === Channel::EMAIL
+            ? filter_var($address, FILTER_VALIDATE_EMAIL)
+            : preg_match('/^(?:-?[1-9][0-9]*|@[a-zA-Z][a-zA-Z0-9_]{4,})$/D', $address);
+        if (!$valid) throw new \InvalidArgumentException('Invalid recipient address');
     }
 }
