@@ -4,7 +4,8 @@
     "config": {
         "preferred-install": "dist",
         "disable-tls": false,
-        "secure-http": false
+        "secure-http": true,
+        "platform-check": true
     },
     "authors": [
         {
@@ -18,10 +19,17 @@
         }
     },
     "require": {
+        "php": ">=8.1",
         "monolog/monolog": "^3.8",
         "nesbot/carbon": "^2.73",
         "phpmailer/phpmailer": "^6.9",
         "predis/predis": "^2.3",
-        "ext-curl": "*"
+        "ext-curl": "*",
+        "ext-pdo": "*",
+        "ext-pdo_mysql": "*",
+        "ext-memcached": "*",
+        "ext-mbstring": "*",
+        "ext-openssl": "*",
+        "ext-session": "*"
     }
 }
