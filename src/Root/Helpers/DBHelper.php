@@ -11,6 +11,8 @@ class DBHelper
 {
     const DB_PREFIX = '';
 
+    private static ?PDO $connection = null;
+
     /**
      * Select exactly one row; return false when no rows match.
      * Throws UnexpectedValueException when multiple rows match.
@@ -218,17 +220,47 @@ class DBHelper
     }
 
 
-    public static function universal($sql, $args = null, $fetch = null, $last_id = null, $exec_time = false)
+    /** One connection per ordinary PHP request; no persistent connections or automatic retries. */
+    private static function getConnection(): PDO
     {
-        $rows = [];
-
+        if (self::$connection !== null) {
+            return self::$connection;
+        }
         $dsn = "mysql:host=" . Settings::get('db', 'server') . ";dbname=" . Settings::get('db', 'name') . ";charset=utf8mb4";
         $opt = [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES   => false,
         ];
-        $pdo = new PDO($dsn, Settings::get('db', 'user'), Settings::get('db', 'password'), $opt);
+        self::$connection = new PDO($dsn, Settings::get('db', 'user'), Settings::get('db', 'password'), $opt);
+        return self::$connection;
+    }
+
+    public static function beginTransaction(): bool
+    {
+        return self::getConnection()->beginTransaction();
+    }
+
+    public static function commit(): bool
+    {
+        return self::getConnection()->commit();
+    }
+
+    public static function rollBack(): bool
+    {
+        return self::getConnection()->rollBack();
+    }
+
+    public static function inTransaction(): bool
+    {
+        return self::$connection !== null && self::$connection->inTransaction();
+    }
+
+    public static function universal($sql, $args = null, $fetch = null, $last_id = null, $exec_time = false)
+    {
+        $rows = [];
+
+        $pdo = self::getConnection();
         if ((isset($args)) && (count($args) == 0)) {
             $args = null;
         }
@@ -265,8 +297,6 @@ class DBHelper
             return $pdo->lastInsertID();
         }
 
-        $pdo = null;
-        $dsn = null;
         if ($fetch) {
             return $rows;
         }
