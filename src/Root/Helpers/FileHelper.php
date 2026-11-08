@@ -50,9 +50,18 @@ class FileHelper
         return array_values($folders);
     }
 
+    private static function readDirectory(string $dir): array
+    {
+        $entries = @scandir($dir);
+        if ($entries === false) {
+            throw new \RuntimeException('Cannot read directory: ' . $dir);
+        }
+        return $entries;
+    }
+
     public static function list_Folders(string $dir, string $subdir = '', bool $subfolders = true): array
     {
-        $ffs = scandir($dir);
+        $ffs = self::readDirectory($dir);
 
         $sub_ffs = [];
         unset($ffs[array_search('.', $ffs, true)]);
@@ -81,12 +90,7 @@ class FileHelper
 
     public static function list_Files($dir): array
     {
-        if (!is_dir($dir)) {
-            LogHelper::log('list_Files', ['error' => $dir . ' is not directory'], 'errors/');
-            return [];
-        }
-
-        $ffs = scandir($dir);
+        $ffs = self::readDirectory($dir);
 
         unset($ffs[array_search('.', $ffs, true)]);
         unset($ffs[array_search('..', $ffs, true)]);
