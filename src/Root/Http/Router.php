@@ -20,6 +20,20 @@ class Router
     private static string $address;
     private static array $params = [];
 
+    /** Clear router state between isolated tests; call init() before routing again. */
+    public static function reset(): void
+    {
+        self::$routes = [];
+        self::$rules = [];
+        self::$middleware_files = [];
+        self::$middlewares = [];
+        self::$request = '';
+        self::$route = '';
+        self::$path = '';
+        self::$address = '';
+        self::$params = [];
+    }
+
     public static function init(string $request)
     {
         self::$request = $request;
