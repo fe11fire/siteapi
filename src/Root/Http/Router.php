@@ -162,14 +162,9 @@ class Router
         return false;
     }
 
-    public static function apply_Param_by_Name(string $name, string $value): void
+    public static function apply_Param_by_Name(string $name, mixed $value): void
     {
-        if (!isset(self::$params[$name])) {
-            self::$params[$name] = '';
-        } else {
-            self::$params[$name] .= '<br>';
-        }
-        self::$params[$name] .= $value;
+        self::$params[$name] = $value;
     }
 
     public static function is_Ajax(): bool
