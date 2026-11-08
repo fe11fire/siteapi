@@ -12,20 +12,21 @@ class DBHelper
     const DB_PREFIX = '';
 
     /**
-     * Select first row or return false
+     * Select exactly one row; return false when no rows match.
+     * Throws UnexpectedValueException when multiple rows match.
      *
      * @param string $columns '*' or list of columns
      * @param array $tables tables with shortNames
      * @param string $beforeWhere command before Where like JOIN
      * @param array $where where conclusions in key value format
      * @param string $beforeWhere commands after where like GROUP ORDER HAVING
-     * @param array $single_Row first row from selected
+     * @param array $single_Row matched row, or an empty array when no unique result is returned
      * @param bool $logging log where, args, sql in 'queries/'
      * @param bool $debug log where, args, sql in 'debug/'
      * @return bool
      */
 
-    public static function selectSingle(
+    public static function selectExactlyOne(
         string $columns,
         array $table,
         string $beforeWhere,
@@ -36,14 +37,18 @@ class DBHelper
         bool $debug = false
     ): bool {
         $single_Row = [];
-        if (
-            (self::select($columns, $table, $beforeWhere, $where, $afterWhere, $rows, $logging, $debug)) &&
-            (count($rows) == 1)
-        ) {
-            $single_Row = $rows[0];
-            return true;
+        if (!self::select($columns, $table, $beforeWhere, $where, $afterWhere, $rows, $logging, $debug)) {
+            return false;
         }
-        return false;
+        $count = count($rows);
+        if ($count > 1) {
+            throw new \UnexpectedValueException('Expected exactly one database row, got ' . $count);
+        }
+        if ($count === 0) {
+            return false;
+        }
+        $single_Row = $rows[0];
+        return true;
     }
 
     /**
