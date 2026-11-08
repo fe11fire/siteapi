@@ -9,8 +9,8 @@ class Curl
 {
     protected $curl;
     protected int $http_code;
-    protected mixed $result;
-    private $user_payload;
+    protected mixed $result = null;
+    private ?string $error = null;
 
     private string $log_folder = 'curl/';
 
@@ -27,26 +27,52 @@ class Curl
         $this->curl_base($url);
         $this->curl_header($user_header);
         $this->curl_customrequest($customrequest);
-        $this->user_payload = $user_payload;
         $this->curl_payload($user_payload);
         $this->log_folder = $log_folder;
     }
 
-    public function exec()
+    public function exec(): bool
     {
-        if (isset($this->user_payload['secret'])) {
-            $this->user_payload['secret'] = '*hidden*';
-        }
-        LogHelper::log('CURL exec', ['curl_getinfo' => curl_getinfo($this->curl), 'user_payload' => $this->user_payload], $this->log_folder);
-        $this->result = curl_exec($this->curl);
-        if ($this->result === false) {
-            LogHelper::log('CURL exec failed !!!', [], $this->log_folder);
-            return false;
-        }
-        $this->result = json_decode($this->result);
+        $this->result = null;
+        $this->error = null;
+        $this->http_code = 0;
+        $body = curl_exec($this->curl);
         $this->http_code = curl_getinfo($this->curl, CURLINFO_HTTP_CODE);
-        LogHelper::log('CURL exec success', ['result' => $this->result, 'code' => $this->http_code], $this->log_folder);
-        return true;
+        $errno = curl_errno($this->curl);
+        if ($body === false) {
+            $this->error = $errno === CURLE_OPERATION_TIMEDOUT ? 'timeout' : 'connection_failed';
+        } else {
+            $validJson = true;
+            if ($this->http_code !== 204 || $body !== '') {
+                try {
+                    $this->result = json_decode($body, false, 512, JSON_THROW_ON_ERROR);
+                } catch (\JsonException) {
+                    $validJson = false;
+                }
+            }
+            if ($this->http_code < 200 || $this->http_code >= 300) {
+                $this->error = 'http_error';
+            } elseif (!$validJson) {
+                $this->error = 'invalid_json';
+            }
+        }
+        // Do not log URLs, headers, request/response bodies or raw transport errors.
+        $context = ['http_code' => $this->http_code, 'error' => $this->error, 'curl_errno' => $errno];
+        try {
+            if ($this->error !== null) {
+                LogHelper::error('CURL request failed', $context);
+            } else {
+                LogHelper::log('CURL request succeeded', $context, $this->log_folder);
+            }
+        } catch (\Throwable) {
+            error_log('CURL request result: ' . json_encode($context));
+        }
+        return $this->error === null;
+    }
+
+    public function get_error(): ?string
+    {
+        return $this->error;
     }
 
     public function clear_token($token)
@@ -88,7 +114,7 @@ class Curl
 
     private function curl_payload($payload = [])
     {
-        curl_setopt($this->curl, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($this->curl, CURLOPT_POSTFIELDS, json_encode($payload, JSON_THROW_ON_ERROR));
     }
 
     public static function ping(string $url): bool
