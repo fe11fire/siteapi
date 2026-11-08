@@ -28,17 +28,28 @@ class Settings
 
         self::$settings_files = FileHelper::list_Files(self::$directory);
 
-        if (self::$settings_files === null) {
-            return;
-        }
-
-        foreach (self::$settings_files as $key_ => $file) {
-            self::$settings->{substr($file, 0, -5)} = new stdClass();
-            $str = json_decode(file_get_contents(self::$directory . '/' . $file));
-            foreach ($str as $key => $value) {
-                self::$settings->{substr($file, 0, -5)}->{$key} = $value;
+        // Publish settings only after every JSON file has passed validation.
+        $loaded = new stdClass();
+        foreach (self::$settings_files as $file) {
+            if (pathinfo($file, PATHINFO_EXTENSION) !== 'json') {
+                continue;
             }
+            $path = self::$directory . '/' . $file;
+            $contents = @file_get_contents($path);
+            if ($contents === false) {
+                throw new \RuntimeException('Cannot read settings file: ' . $path);
+            }
+            try {
+                $data = json_decode($contents, false, 512, JSON_THROW_ON_ERROR);
+            } catch (\JsonException $error) {
+                throw new \RuntimeException('Invalid JSON in settings file: ' . $path . ' (' . $error->getMessage() . ')', 0, $error);
+            }
+            if (!$data instanceof stdClass) {
+                throw new \UnexpectedValueException('Settings file must contain a JSON object: ' . $path);
+            }
+            $loaded->{substr($file, 0, -5)} = $data;
         }
+        self::$settings = $loaded;
     }
 
     public static function get(
