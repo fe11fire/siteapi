@@ -44,7 +44,7 @@ class Router
                     self::$address = $folder . $rule['name'];
                 }
 
-                if ($new_Params != null) {
+                if ($new_Params !== null) {
                     self::$params = $new_Params;
                 }
 
