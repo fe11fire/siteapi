@@ -307,11 +307,14 @@ class DBHelper
             $i = 0;
             foreach ($args as $key => $value) {
                 $i++;
-                if (is_null($value)) {
-                    $stmt->bindValue($i, null);
-                } else {
-                    $stmt->bindValue($i, $value);
-                }
+                $type = match (true) {
+                    $value === null => PDO::PARAM_NULL,
+                    is_bool($value) => PDO::PARAM_BOOL,
+                    is_int($value) => PDO::PARAM_INT,
+                    is_string($value), is_float($value) => PDO::PARAM_STR,
+                    default => throw new \InvalidArgumentException('SQL parameters must be scalar values or null'),
+                };
+                $stmt->bindValue($i, $value, $type);
             }
             $stmt->execute();
 

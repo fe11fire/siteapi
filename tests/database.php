@@ -12,6 +12,27 @@ check(!DBHelper::inTransaction(), 'Checking state must not create a connection')
 $pdo = new PDO('sqlite::memory:', options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
 $connection->setValue(null, $pdo);
 try {
+    foreach ([
+        [false, 'integer', 0],
+        [true, 'integer', 1],
+        [25, 'integer', 25],
+        ['025', 'text', '025'],
+        ['false', 'text', 'false'],
+        [null, 'null', null],
+        [1.25, 'text', '1.25'],
+    ] as [$value, $expectedType, $expectedValue]) {
+        $row = DBHelper::universal('SELECT typeof(?) AS value_type, ? AS value', [$value, $value], true)[0];
+        check($row['value_type'] === $expectedType && $row['value'] === $expectedValue, 'PDO parameter type');
+    }
+    foreach ([[], new stdClass(), fopen('php://memory', 'r+')] as $unsupported) {
+        try {
+            DBHelper::universal('SELECT ?', [$unsupported], true);
+            throw new LogicException('Unsupported SQL value accepted');
+        } catch (InvalidArgumentException) {
+        } finally {
+            if (is_resource($unsupported)) fclose($unsupported);
+        }
+    }
     DBHelper::universal('CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT)');
     DBHelper::universal('INSERT INTO items (name) VALUES (?)', ['original']);
     $earlier = DBHelper::universal('SELECT * FROM items', fetch: true);

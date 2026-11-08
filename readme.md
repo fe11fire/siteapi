@@ -37,6 +37,26 @@ composer require fellfire/siteapi:dev-main
 ```
 На данном этапе разработки версионность проекта не используется.
 
+### Требования среды
+
+Все текущие модули входят в обязательную поставку. Требуется PHP >= 8.1,
+расширения curl, PDO, pdo_mysql, memcached, mbstring (или совместимый Composer-polyfill),
+openssl и session. Composer устанавливает Monolog, Carbon, PHPMailer и Predis.
+Расширения PHP устанавливаются средствами сервера, Composer только проверяет их наличие.
+Для Redis используется Predis: расширение ext-redis не требуется.
+
+```sh
+composer install
+composer check-platform-reqs
+```
+
+Включён platform-check=true: сгенерированный Composer autoload проверяет PHP и расширения
+при запуске приложения. Не используйте --ignore-platform-reqs и не отключайте эту проверку
+при развёртывании. Зависимости загружаются по HTTPS (secure-http=true).
+Это не запускает подключения: MySQL, Redis/Memcached и SMTP должны быть настроены отдельно;
+Telegram требует токен. Проверка наличия библиотек не гарантирует доступность внешних сервисов.
+Для тестов database.php и database-logging.php дополнительно нужен pdo_sqlite.
+
 ## Настройка
 
 <br>Необходимо перенаправить все запросы web-сервера в точку входа `index.php`.
@@ -574,3 +594,10 @@ FileHelper::make_Folder() создаёт вложенные каталоги и 
 RuntimeException с путём; сырое предупреждение mkdir() не выводится.
 FileLogger использует этот же метод. Доступность записи в существующем каталоге
 окончательно проверяется при открытии файла журналом.
+
+
+DBHelper привязывает параметры по фактическому PHP-типу: null → PARAM_NULL,
+bool → PARAM_BOOL, int → PARAM_INT, string/float → PARAM_STR (у PDO нет PARAM_FLOAT).
+Строки не распознаются автоматически как числа или bool: '025' и 'false' остаются строками.
+Массивы, объекты и ресурсы как значения одного плейсхолдера вызывают InvalidArgumentException
+до выполнения запроса. Для JSON-полей явно вызывайте json_encode() до передачи в DBHelper.
