@@ -7,7 +7,21 @@ mkdir($dir);
 try {
     check(FileHelper::list_Files($dir) === []);
     check(FileHelper::list_Folders($dir) === []);
+    FileHelper::make_Folder($dir); // Already exists.
+    FileHelper::make_Folder($dir . '/new/nested');
+    check(is_dir($dir . '/new/nested'));
+    FileHelper::make_Folder($dir . '/new/nested');
+    rmdir($dir . '/new/nested');
+    rmdir($dir . '/new');
     file_put_contents($dir . '/example.txt', 'test');
+    foreach ([$dir . '/example.txt', $dir . '/example.txt/child'] as $blocked) {
+        try {
+            FileHelper::make_Folder($blocked);
+            throw new LogicException('Expected creation failure');
+        } catch (RuntimeException $error) {
+            check(str_contains($error->getMessage(), $blocked));
+        }
+    }
     mkdir($dir . '/child');
     check(array_values(FileHelper::list_Files($dir)) === ['example.txt']);
     check(array_values(FileHelper::list_Folders($dir)) === ['child']);

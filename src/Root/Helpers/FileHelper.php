@@ -7,8 +7,11 @@ class FileHelper
 
     public static function make_Folder($folder)
     {
-        if (!file_exists($folder) || !is_dir($folder)) {
-            mkdir($folder, recursive: true);
+        if (is_dir($folder)) {
+            return;
+        }
+        if (!@mkdir($folder, recursive: true) && !is_dir($folder)) {
+            throw new \RuntimeException('Cannot create directory: ' . $folder);
         }
     }
 
