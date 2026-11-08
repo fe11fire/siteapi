@@ -75,6 +75,6 @@ class LogHelper
         string $message,
         array $params = []
     ) {
-        self::log($message, $params, 'errors/');
+        self::log($message, $params, 'errors/', status: Level::Error);
     }
 }

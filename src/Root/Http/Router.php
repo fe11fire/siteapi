@@ -50,10 +50,13 @@ class Router
 
                 if (isset($rule['middlewares'])) {
                     foreach ($rule['middlewares'] as $middleware) {
-                        if (class_exists($middleware)) {
-                            /** @var Middleware $middleware */
-                            $middleware::apply();
+                        if (!is_string($middleware) || !class_exists($middleware)) {
+                            throw new \RuntimeException('Middleware class not found: ' . (is_string($middleware) ? $middleware : get_debug_type($middleware)));
                         }
+                        if (!is_subclass_of($middleware, Middleware::class)) {
+                            throw new \RuntimeException('Middleware must implement ' . Middleware::class . ': ' . $middleware);
+                        }
+                        $middleware::apply();
                     }
                 }
 

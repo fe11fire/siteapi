@@ -54,35 +54,48 @@ RewriteRule . index.php
 ```php
 use SiteApi\Root\Http\Router;
 use SiteApi\Root\Http\Templates;
+use SiteApi\Root\Http\ErrorHandler;
 use SiteApi\Root\Settings\Settings;
 
-/* Подключение пакета */
 require_once($_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php');
 
-Settings::init(); /* Инициализация настроек framework */
-Router::init($_SERVER['REQUEST_URI']); /* Получение запроса */
+$bufferLevel = ob_get_level();
+ob_start();
 
-if (Router::route(Router::get_Route())) {
-    /* Маршрут успешно завершен */
+try {
+    Settings::init();
+    Router::init($_SERVER['REQUEST_URI']);
+
+    if (Router::route(Router::get_Route())) {
+        return;
+    }
+
+    // false означает только отсутствие маршрута.
+    http_response_code(404);
+    if (Router::is_Ajax()) {
+        echo Templates::pageAjax();
+        return;
+    }
+    if (Router::route('404')) {
+        return;
+    }
+    echo Templates::page404();
+} catch (\Throwable $error) {
+    // Удаляем частичный ответ и вложенные буферы страницы.
+    while (ob_get_level() > $bufferLevel) {
+        ob_end_clean();
+    }
+    // Ответ об ошибке также отправляется через finally.
+    ob_start();
+    ErrorHandler::handle($error);
     return;
+} finally {
+    // finally выполняется и при раннем return.
+    // Исходные буферы, открытые до точки входа, не трогаем.
+    while (ob_get_level() > $bufferLevel) {
+        ob_end_flush();
+    }
 }
-
-/* Ошибка. Исключение или маршрут не найден */
-
-if (Router::is_Ajax()) {
-    /* Проверка маршрута на ajax-запрос, возвращение ошибки из шаблонов framework */
-    echo Templates::pageAjax();
-    return;
-}
-
-if (Router::route('404')) {
-    /* Возвращение страницы 404 */
-    return;
-}
-
-/* Все пропало. Вывод 404 из шаблонов framework */
-
-echo Templates::page404();
 ```
 
 ## Основной функционал
@@ -115,7 +128,28 @@ return [
 ]
 ```
 ### Middlewares
-<br>
+
+Middleware маршрута должен существовать и реализовывать `SiteApi\Root\Http\Contracts\Middleware`.
+При неверной конфигурации роутер выбрасывает исключение и не выполняет страницу.
+
+### Обработка ошибок
+
+Внешний `catch (\Throwable $error)` в точке входа передаёт ошибки в `ErrorHandler`.
+Обработчик пишет подробности с уровнем Error через `LogHelper::error()` в `errors/`
+(по умолчанию `siteapilogs/<год>/errors/<месяц-день>.log`). При отказе логгера используется PHP `error_log()`.
+Пользователь получает нейтральную страницу и код обращения, совпадающий с `error_id` в журнале.
+Для пути `ajax` / `ajax/...` возвращается JSON. Заголовок `X-Requested-With` не учитывается.
+Ответ имеет статус 500; отсутствие маршрута обрабатывается отдельно как 404.
+Обработчик не отправляет уведомления администратору.
+
+В примере точки входа вывод накапливается в буфере. При ошибке частичный ответ
+и вложенные буферы удаляются до вызова `ErrorHandler`. Блок `finally` отправляет
+готовый ответ даже при раннем `return`, сохраняя буферы, открытые до точки входа.
+Код страниц не должен принудительно отправлять или закрывать буфер точки входа.
+`exit` / `die` не выполняют `finally`; потоковые ответы и скачивания требуют отдельного сценария.
+Уже отправленные данные и заголовки буфер не восстанавливает.
+В production отключите `display_errors` в настройках PHP, чтобы встроенные сообщения PHP
+не раскрывали подробности.
 
 ### Построение html-файлов
 <br>
