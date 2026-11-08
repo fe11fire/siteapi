@@ -90,7 +90,11 @@ class Router
 
     private static function make_Request_Route(): void
     {
-        self::$route = explode('?', trim(self::$request, '/'))[0];
+        $parts = parse_url(self::$request);
+        if ($parts === false) {
+            throw new \InvalidArgumentException('Invalid request URI');
+        }
+        self::$route = trim($parts['path'] ?? '', '/');
     }
 
     public static function get_Route()
@@ -141,7 +145,10 @@ class Router
     private static function make_Request_Params(): void
     {
         $query = [];
-        $parts = parse_url(trim(self::$request, '/'));
+        $parts = parse_url(self::$request);
+        if ($parts === false) {
+            throw new \InvalidArgumentException('Invalid request URI');
+        }
         if (isset($parts['query'])) {
             parse_str($parts['query'], $query);
         }
