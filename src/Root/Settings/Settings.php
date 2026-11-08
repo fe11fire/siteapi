@@ -52,37 +52,82 @@ class Settings
         self::$settings = $loaded;
     }
 
-    public static function get(
-        string $file,
-        string $name,
-    ): string | array | stdClass {
-        $envName = StringHelper::up_Letters($file) . '_' . StringHelper::up_Letters($name);
-        if (($get = getenv($envName)) !== false) {
-            return $get;
+    private static function lookup(string $file, string $name, bool &$found): mixed
+    {
+        $env = StringHelper::up_Letters($file) . '_' . StringHelper::up_Letters($name);
+        $value = getenv($env);
+        if ($value !== false) {
+            $found = true;
+            return $value;
         }
-        if (!isset(self::$settings->{$file})) {
-            LogHelper::log('Repair one of this: - file not found; - missed env variable.', ['file' => $file, 'name' => $name, 'env_variable' => $envName], 'errors/');
-            throw new Exception("Repair one of this: - file not found; - missed env variable.", 1);
-        }
-        if (!isset(self::$settings->{$file}->{$name})) {
-            LogHelper::log('Repair one of this: - name in file not found; - missed env variable.', ['file' => $file, 'name' => $name, 'env_variable' => $envName], 'errors/');
-            throw new Exception("Repair one of this: - name in file not found; - missed env variable.", 1);
-        }
-        return self::$settings->{$file}->{$name};
+        $section = self::$settings->{$file} ?? null;
+        $found = $section instanceof stdClass && property_exists($section, $name);
+        return $found ? $section->{$name} : null;
     }
 
-    public static function get_Default(
-        string $file,
-        string $name,
-        string | array | stdClass $default
-    ): string | array | stdClass {
-        if (($get = getenv(StringHelper::up_Letters($file) . '_' . StringHelper::up_Letters($name))) !== false) {
-            return $get;
+    public static function get(string $file, string $name): mixed
+    {
+        $found = false;
+        $value = self::lookup($file, $name, $found);
+        if (!$found) throw new \RuntimeException('Missing setting: ' . $file . '.' . $name);
+        return $value;
+    }
+
+    public static function get_Default(string $file, string $name, mixed $default): mixed
+    {
+        $found = false;
+        $value = self::lookup($file, $name, $found);
+        return $found ? $value : $default;
+    }
+
+    private static function typed(string $file, string $name, string $type, bool $hasDefault, mixed $default): mixed
+    {
+        $value = $hasDefault ? self::get_Default($file, $name, $default) : self::get($file, $name);
+        if ($type === 'string' && is_string($value)) return $value;
+        if ($type === 'bool') {
+            if (in_array($value, [true, 1, '1', 'true'], true)) return true;
+            if (in_array($value, [false, 0, '0', 'false'], true)) return false;
         }
-        if ((!isset(self::$settings->{$file})) || (!isset(self::$settings->{$file}->{$name}))) {
-            return $default;
+        if ($type === 'int') {
+            if (is_int($value)) return $value;
+            if (is_string($value) && preg_match('/\A-?(?:0|[1-9][0-9]*)\z/', $value)) {
+                $integer = filter_var($value, FILTER_VALIDATE_INT);
+                if ($integer !== false) return $integer;
+            }
         }
-        return self::$settings->{$file}->{$name};
+        if ($type === 'array') {
+            if (is_array($value)) return $value;
+            if (is_string($value)) {
+                try {
+                    $array = json_decode($value, false, 512, JSON_THROW_ON_ERROR);
+                    if (is_array($array)) return $array;
+                } catch (\JsonException) {
+                    // Do not include the value or parser exception in diagnostics.
+                }
+            }
+        }
+        throw new \UnexpectedValueException('Setting ' . $file . '.' . $name . ' must be ' . $type);
+    }
+
+    public static function getString(string $file, string $name, mixed $default = null): string
+    {
+        return self::typed($file, $name, 'string', func_num_args() >= 3, $default);
+    }
+
+    public static function getBool(string $file, string $name, mixed $default = null): bool
+    {
+        return self::typed($file, $name, 'bool', func_num_args() >= 3, $default);
+    }
+
+    public static function getInt(string $file, string $name, mixed $default = null): int
+    {
+        return self::typed($file, $name, 'int', func_num_args() >= 3, $default);
+    }
+
+    /** JSON arrays are lists; JSON objects remain stdClass, including inside lists. */
+    public static function getArray(string $file, string $name, mixed $default = null): array
+    {
+        return self::typed($file, $name, 'array', func_num_args() >= 3, $default);
     }
 
     public static function get_Directory($name): string
@@ -91,7 +136,7 @@ class Settings
             (isset(self::$settings->{'paths'})) &&
             (isset(self::$settings->{'paths'}->{$name}))
         ) {
-            return self::$settings->{'paths'}->{$name};
+            return self::getString('paths', $name);
         }
         if (!isset(self::$default_directories->{$name})) {
             LogHelper::log('directory name not found', ['name' => $name], 'errors/');
@@ -106,7 +151,7 @@ class Settings
             (isset(self::$settings->{'paths'})) &&
             (isset(self::$settings->{'paths'}->{$name}))
         ) {
-            return self::$settings->{'paths'}->{$name};
+            return self::getString('paths', $name);
         }
         return $default;
     }

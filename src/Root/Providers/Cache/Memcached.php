@@ -17,8 +17,8 @@ class Memcached implements CacheContract
             }
             $client = new Client();
             if (!$client->addServer(
-                Settings::get_Default('memcached', 'host', 'memcached'),
-                (int) Settings::get_Default('memcached', 'port', '11211')
+                Settings::getString('memcached', 'host', 'memcached'),
+                Settings::getInt('memcached', 'port', 11211)
             )) {
                 throw new RuntimeException('Cannot configure Memcached server');
             }

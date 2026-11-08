@@ -299,12 +299,12 @@ use SiteApi\Root\Clients\Telegram\Client as TelegramClient;
 use SiteApi\Root\Clients\Email\Client as EmailClient;
 
 $sender = new Sender(
-    new TelegramClient(token: Settings::get('telegram', 'token')),
+    new TelegramClient(token: Settings::getString('telegram', 'token')),
     new EmailClient(
-        host: Settings::get('smtp', 'host'),
-        from: Settings::get('smtp', 'from'),
-        username: Settings::get('smtp', 'username'),
-        password: Settings::get('smtp', 'password'),
+        host: Settings::getString('smtp', 'host'),
+        from: Settings::getString('smtp', 'from'),
+        username: Settings::getString('smtp', 'username'),
+        password: Settings::getString('smtp', 'password'),
         port: 587,
         encryption: 'tls', // tls (STARTTLS) или ssl (implicit TLS)
     ),
@@ -375,3 +375,26 @@ Email-проверка использует двойник PHPMailer; реаль
 исключения из report(). В результат не попадают исходные исключения и ответы сервисов.
 Добавление третьего канала потребует расширения Channel и проверки адреса Recipient —
 это осознанное ограничение текущей версии, а не автоматически подключаемая система плагинов.
+
+
+### Типы настроек
+
+`getString()`, `getBool()`, `getInt()` и `getArray()` проверяют значение после выбора
+источника: сначала переменная окружения, затем JSON. Третий аргумент `default` используется
+только при отсутствии ключа. Некорректное значение (включая null) вызывает исключение,
+даже если задан default; сам default тоже проверяется.
+
+```php
+Settings::getBool('app', 'enabled', default: false);
+Settings::getInt('redis', 'port', default: 6379);
+Settings::getString('db', 'password');
+Settings::getArray('app', 'allowed_hosts', default: []);
+```
+
+Bool принимает только true/false, 1/0 и строки "true"/"false", "1"/"0".
+Int принимает целое JSON-число или десятичную строку в диапазоне PHP int, без пробелов,
+дробей и ведущих нулей. String требует строку: числовые идентификаторы в JSON нужно
+заключать в кавычки. Array принимает PHP-массив либо строку с JSON-массивом (например,
+переменная APP_ALLOWED_HOSTS='["example.com"]'). JSON-объекты остаются stdClass.
+Обычные get() и get_Default() возвращают исходное значение (mixed), сохраняя null.
+Существующий .env-файл автоматически не загружается.

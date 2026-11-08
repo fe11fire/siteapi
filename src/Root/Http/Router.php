@@ -31,7 +31,7 @@ class Router
 
     public static function route(string $name, ?array $new_Params = null): bool
     {
-        $folder = Settings::get_Default('env', 'folder', '');
+        $folder = Settings::getString('env', 'folder', '');
 
         foreach (self::$rules as $rule) {
 
@@ -84,7 +84,7 @@ class Router
                 $delimeter = '&';
             }
         }
-        header('Location:https://' . Settings::get('env', 'domain') . Settings::get('env', 'host') . '/' . Settings::get_Default('env', 'folder', '') . $url);
+        header('Location:https://' . Settings::getString('env', 'domain') . Settings::getString('env', 'host') . '/' . Settings::getString('env', 'folder', '') . $url);
         exit;
     }
 

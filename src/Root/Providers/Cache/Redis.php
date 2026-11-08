@@ -12,8 +12,8 @@ class Redis implements CacheContract
     private function connection(): Client
     {
         return $this->client ??= new Client([
-            'host' => Settings::get_Default('redis', 'host', 'redis'),
-            'port' => (int) Settings::get_Default('redis', 'port', '6379'),
+            'host' => Settings::getString('redis', 'host', 'redis'),
+            'port' => Settings::getInt('redis', 'port', 6379),
         ]);
     }
 

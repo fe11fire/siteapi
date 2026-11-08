@@ -24,7 +24,7 @@ class SecretHelper
         if (session_id()) {
             $code .= session_id();
         }
-        $code .= Settings::get('app', 'id');
+        $code .= Settings::getString('app', 'id');
         return md5($code);
     }
 }

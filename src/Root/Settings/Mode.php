@@ -16,7 +16,7 @@ class Mode
     ): string {
         if (
             ($mode != self::CONDITION_ANY) &&
-            ($mode != Settings::get('env', 'mode'))
+            ($mode != Settings::getString('env', 'mode'))
         ) {
             return '';
         }
