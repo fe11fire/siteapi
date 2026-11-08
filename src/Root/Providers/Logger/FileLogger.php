@@ -12,13 +12,16 @@ class FileLogger implements LoggerContract
 {
     public static function get(string $folder, Level $status): Logger
     {
-        $dir = Settings::get_Directory_Default('logs', 'siteapilogs') . '/' . Carbon::now()->format('Y') . '/' . $folder;
+        $now = Carbon::now();
+        $base = rtrim(Settings::get_Directory_Default('logs', 'siteapilogs'), '/');
+        $folder = trim($folder, '/');
+        $dir = $base . '/' . $now->format('Y') . ($folder !== '' ? '/' . $folder : '');
         if (!file_exists($dir) || !is_dir($dir)) {
             mkdir($dir, recursive: true);
         }
 
         $log = new Logger('name');
-        $log->pushHandler(new StreamHandler($dir . Carbon::now()->format('m-d') . '.log', $status));
+        $log->pushHandler(new StreamHandler($dir . '/' . $now->format('m-d') . '.log', $status));
         return $log;
     }
 
