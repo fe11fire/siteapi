@@ -61,31 +61,35 @@ class FileHelper
 
     public static function list_Folders(string $dir, string $subdir = '', bool $subfolders = true): array
     {
-        $ffs = self::readDirectory($dir);
+        return self::collectFolders($dir, trim($subdir, '/'), $subfolders, []);
+    }
 
-        $sub_ffs = [];
-        unset($ffs[array_search('.', $ffs, true)]);
-        unset($ffs[array_search('..', $ffs, true)]);
-
-        if (count($ffs) < 1)
-            return [];
-
-        for ($i = count($ffs) + 1; $i >= 0; $i--) {
-            if (!isset($ffs[$i])) {
-                continue;
+    /** Track ancestors, so links may be traversed without following a cycle. */
+    private static function collectFolders(string $dir, string $prefix, bool $recursive, array $ancestors): array
+    {
+        $entries = self::readDirectory($dir);
+        $real = realpath($dir);
+        if ($real === false) {
+            throw new \RuntimeException('Cannot resolve directory: ' . $dir);
+        }
+        $ancestors[$real] = true;
+        $folders = [];
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') continue;
+            $path = $dir . '/' . $entry;
+            if (!is_dir($path)) continue;
+            $relative = $prefix !== '' ? $prefix . '/' . $entry : $entry;
+            $folders[] = $relative;
+            if (!$recursive) continue;
+            $target = realpath($path);
+            if ($target === false) {
+                throw new \RuntimeException('Cannot resolve directory: ' . $path);
             }
-            if (is_dir($dir . '/' . $ffs[$i])) {
-                if ($subfolders) {
-                    $sub_ffs = array_merge($sub_ffs, self::list_Folders($dir . '/' . $ffs[$i], $ffs[$i]));
-                    if ($subdir != '') {
-                        $ffs[$i] = $subdir . '/' . $ffs[$i];
-                    }
-                }
-            } else {
-                unset($ffs[$i]);
+            if (!isset($ancestors[$target])) {
+                $folders = array_merge($folders, self::collectFolders($path, $relative, true, $ancestors));
             }
         }
-        return array_merge($ffs, $sub_ffs);
+        return $folders;
     }
 
     public static function list_Files($dir): array
