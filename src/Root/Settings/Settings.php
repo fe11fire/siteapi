@@ -16,7 +16,7 @@ class Settings
     private static stdClass $settings;
     private static stdClass $default_directories;
 
-    public static function init()
+    public static function init(bool $allowMissing = false)
     {
         self::$settings = new stdClass();
         self::$default_directories = (object) array(
@@ -26,7 +26,8 @@ class Settings
             'headers' => 'common/headers',
         );
 
-        self::$settings_files = FileHelper::list_Files(self::$directory);
+        self::$settings_files = $allowMissing && !file_exists(self::$directory)
+            ? [] : FileHelper::list_Files(self::$directory);
 
         // Publish settings only after every JSON file has passed validation.
         $loaded = new stdClass();

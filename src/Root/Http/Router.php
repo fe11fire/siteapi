@@ -34,13 +34,16 @@ class Router
         self::$params = [];
     }
 
-    public static function init(string $request)
+    public static function init(string $request, bool $allowMissingMiddlewares = false)
     {
         self::$request = $request;
         self::make_Request_Route();
         self::make_Request_Params();
         self::make_Routes(Settings::get_Directory('routes'));
-        self::make_Middlewares(Settings::get_Directory('middlewares'));
+        $middlewares = Settings::get_Directory('middlewares');
+        if (!$allowMissingMiddlewares || file_exists($middlewares)) {
+            self::make_Middlewares($middlewares);
+        }
     }
 
     public static function route(string $name, ?array $new_Params = null): bool

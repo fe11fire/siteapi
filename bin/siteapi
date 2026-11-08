@@ -1,0 +1,63 @@
+#!/usr/bin/env php
+<?php
+/** Self-contained scaffold command: it does not load the application or contact services. */
+if (($argv[1] ?? '') !== 'init' || count($argv) > 3) {
+    fwrite(STDERR, "Usage: siteapi init [application-directory]\n");
+    exit(1);
+}
+$root = $argv[2] ?? getcwd();
+$files = [
+    'public/index.php' => <<<'CODE'
+<?php
+
+require dirname(__DIR__) . '/vendor/autoload.php';
+
+SiteApi\App::run(dirname(__DIR__));
+
+CODE,
+    'routes/web.php' => <<<'CODE'
+<?php
+
+return [
+    ['name' => '', 'path' => 'pages/', 'url' => 'home.php'],
+];
+
+CODE,
+    'pages/home.php' => <<<'CODE'
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Приложение готово</title>
+<body>
+    <h1>Приложение работает</h1>
+    <p>Начните с файла pages/home.php.</p>
+</body>
+</html>
+
+CODE,
+];
+try {
+    foreach ($files as $relative => $contents) {
+        $path = $root . '/' . $relative;
+        if (file_exists($path) || is_link($path)) {
+            throw new RuntimeException('File already exists; nothing overwritten: ' . $path);
+        }
+    }
+    foreach ($files as $relative => $contents) {
+        $path = $root . '/' . $relative;
+        $dir = dirname($path);
+        if (!is_dir($dir) && !@mkdir($dir, 0777, true) && !is_dir($dir)) {
+            throw new RuntimeException('Cannot create directory: ' . $dir);
+        }
+        $stream = @fopen($path, 'x');
+        if ($stream === false) throw new RuntimeException('Cannot create file: ' . $path);
+        try {
+            if (fwrite($stream, $contents) !== strlen($contents)) throw new RuntimeException('Cannot write file: ' . $path);
+        } finally { fclose($stream); }
+    }
+    fwrite(STDOUT, "Application scaffold created in " . $root . "\nPublic directory: public/\n");
+} catch (Throwable $error) {
+    fwrite(STDERR, $error->getMessage() . "\n");
+    exit(1);
+}

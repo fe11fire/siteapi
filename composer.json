@@ -31,5 +31,8 @@
         "ext-mbstring": "*",
         "ext-openssl": "*",
         "ext-session": "*"
-    }
+    },
+    "bin": [
+        "bin/siteapi"
+    ]
 }
