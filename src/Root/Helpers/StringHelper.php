@@ -90,7 +90,7 @@ class StringHelper
                 break;
         }
 
-        switch ($alphabet) {
+        switch ($options['alphabet']) {
             case self::ALPHABET_ONLY_DIGITS:
                 $alphabet = $digits;
                 break;
@@ -103,17 +103,17 @@ class StringHelper
 
         $length_alphabet = (strlen($alphabet));
 
-        srand((float)microtime() * 1000000);
         $i = 0;
         $code = '';
 
         while ($i < $options['length']) {
-            $num = rand() % $length_alphabet;
+            $num = random_int(0, $length_alphabet - 1);
             $tmp = substr($alphabet, $num, 1);
             $code = $code . $tmp;
             if (
                 (($i % 5) == 4) &&
-                ($options['hyphens'])
+                ($options['hyphens']) &&
+                ($i + 1 < $options['length'])
             ) {
                 $code = $code . '-';
             }
