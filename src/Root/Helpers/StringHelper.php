@@ -123,9 +123,9 @@ class StringHelper
         return $code;
     }
 
-    public static function salt()
+    public static function salt(): string
     {
-        return substr(md5(uniqid()), -8);
+        return bin2hex(random_bytes(16));
     }
 
     public static function wrap_Array_of_String(array $text, string $start, string $end): string
