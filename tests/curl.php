@@ -21,8 +21,15 @@ namespace {
     fclose($server);
     $router = tempnam(sys_get_temp_dir(), 'siteapi-http-');
     file_put_contents($router, '<?php $path=parse_url($_SERVER["REQUEST_URI"],PHP_URL_PATH); if($path==="/slow") usleep(300000); if($path==="/error") {http_response_code(500);echo "{\\"detail\\":\\"PRIVATE\\"}";} elseif($path==="/empty") http_response_code(204); elseif($path==="/invalid") echo "not json PRIVATE"; else echo "{\\"ok\\":true}";');
-    $process = proc_open([PHP_BINARY, '-S', $address, $router], [0 => ['pipe', 'r'], 1 => ['file', '/dev/null', 'a'], 2 => ['file', '/dev/null', 'a']], $pipes);
+    $nullDevice = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
+    $process = null;
+    $pipes = [];
+    $refusedSocket = null;
     try {
+        $process = proc_open([PHP_BINARY, '-S', $address, $router],
+            [0 => ['pipe', 'r'], 1 => ['file', $nullDevice, 'a'], 2 => ['file', $nullDevice, 'a']], $pipes);
+        if (!is_resource($process)) throw new RuntimeException('Cannot start local HTTP test server');
+        fclose($pipes[0]);
         $ready = false;
         for ($i = 0; $i < 100; $i++) {
             $socket = @stream_socket_client('tcp://' . $address, $errno, $error, .05);
@@ -41,13 +48,19 @@ namespace {
         check($client->exec() && $client->get_http_code() === 204 && $client->get_result() === null);
         $client->point('http://' . $address . '/slow'); $client->timeout(30);
         check(!$client->exec() && $client->get_error() === 'timeout');
-        $client->point('http://127.0.0.1:1'); $client->timeout(1000);
+        // Reserve an ephemeral TCP port without listening: no unrelated service can use it.
+        $refusedSocket = stream_socket_server('tcp://127.0.0.1:0', $errno, $error, STREAM_SERVER_BIND);
+        if (!$refusedSocket) throw new RuntimeException('Cannot reserve refusal-test port: ' . $error);
+        $refusedAddress = stream_socket_get_name($refusedSocket, false);
+        // Windows can take about two seconds to report refusal; keep this distinct from /slow.
+        $client->point('http://' . $refusedAddress); $client->timeout(10000);
         check(!$client->exec() && $client->get_error() === 'connection_failed' && $client->get_http_code() === 0);
         check(!str_contains(json_encode(\SiteApi\Root\Helpers\LogHelper::$entries), 'PRIVATE'));
         echo "CURL HTTP, JSON, timeout, connection failure and safe logging checks passed\n";
     } finally {
         if (is_resource($process)) { proc_terminate($process); proc_close($process); }
-        foreach ($pipes as $pipe) if (is_resource($pipe)) fclose($pipe);
+        foreach (($pipes ?? []) as $pipe) if (is_resource($pipe)) fclose($pipe);
+        if (is_resource($refusedSocket)) fclose($refusedSocket);
         unlink($router);
     }
 }

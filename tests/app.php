@@ -11,8 +11,10 @@ $workingDirectory = getcwd();
 $oldEnv = getenv('ENV_FOLDER');
 putenv('ENV_FOLDER=');
 function scaffold(string $root): int {
+    $nullDevice = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
     $process = proc_open([PHP_BINARY, dirname(__DIR__) . '/bin/siteapi', 'init', $root],
-        [0 => ['pipe','r'], 1 => ['file','/dev/null','a'], 2 => ['file','/dev/null','a']], $pipes);
+        [0 => ['pipe','r'], 1 => ['file',$nullDevice,'a'], 2 => ['file',$nullDevice,'a']], $pipes);
+    if (!is_resource($process)) throw new RuntimeException('Cannot start scaffold process');
     fclose($pipes[0]);
     return proc_close($process);
 }

@@ -30,9 +30,17 @@ try {
     check(FileHelper::list_Folders($dir, '', false) === ['child']);
     check(FileHelper::list_Folders($dir, 'prefix', true) === ['prefix/child', 'prefix/child/deep', 'prefix/child/deep/leaf']);
     check(FileHelper::list_Folders($dir, 'prefix', false) === ['prefix/child']);
-    symlink($dir, $dir . '/child/deep/leaf/back');
-    check(FileHelper::list_Folders($dir) === ['child', 'child/deep', 'child/deep/leaf', 'child/deep/leaf/back']);
-    unlink($dir . '/child/deep/leaf/back');
+    // Only the optional symlink scenario depends on OS capabilities/permissions.
+    error_clear_last();
+    $linkCreated = function_exists('symlink') && @symlink($dir, $dir . '/child/deep/leaf/back');
+    if ($linkCreated) {
+        check(FileHelper::list_Folders($dir) === ['child', 'child/deep', 'child/deep/leaf', 'child/deep/leaf/back']);
+        unlink($dir . '/child/deep/leaf/back');
+        echo "Symbolic-link cycle check passed\n";
+    } else {
+        $reason = error_get_last()['message'] ?? 'symlink() is unavailable';
+        fwrite(STDERR, "SKIP: symbolic-link cycle check; cannot create symlink: " . $reason . "\n");
+    }
     rmdir($dir . '/child/deep/leaf');
     rmdir($dir . '/child/deep');
     foreach (['list_Files', 'list_Folders'] as $method) {
