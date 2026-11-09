@@ -2,7 +2,7 @@
 
 namespace SiteApi;
 
-use SiteApi\Root\Http\{Router, Templates, ErrorHandler};
+use SiteApi\Root\Http\{Router, Templates, ErrorHandler, ResponseReady};
 use SiteApi\Root\Settings\Settings;
 
 /** Front controller for ordinary PHP-FPM/Apache requests. */
@@ -37,7 +37,15 @@ final class App
                 }
             }
             ob_start();
-            ErrorHandler::handle($error);
+            if ($error instanceof ResponseReady) {
+                try {
+                    $error->response->emit();
+                } catch (\Throwable $sendError) {
+                    ErrorHandler::handle($sendError);
+                }
+            } else {
+                ErrorHandler::handle($error);
+            }
         } finally {
             while (ob_get_level() > $level) {
                 if (!@ob_end_flush()) {
