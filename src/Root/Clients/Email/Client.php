@@ -7,6 +7,14 @@ use SiteApi\Root\Messenger\{ClientContract, Message, Recipient, SendResult, Chan
 
 class Client implements ClientContract
 {
+    /**
+     * Создаёт SMTP-клиент с адресом отправителя, учётными данными и TLS/SSL.
+     *
+     * Сеть вызывается только при send(); при пустом username SMTPAuth выключен.
+     * @param string $encryption Только tls или ssl; незашифрованный режим не поддерживается.
+     * @throws \InvalidArgumentException Некорректная конфигурация SMTP.
+     * @throws \LogicException Не установлен PHPMailer.
+     */
     public function __construct(
         private readonly string $host,
         private readonly string $from,
@@ -25,10 +33,20 @@ class Client implements ClientContract
         if (!class_exists(PHPMailer::class)) throw new \LogicException('Install Composer dependencies for email');
     }
 
+    /**
+     * Возвращает канал EMAIL.
+     */
     public function getChannel(): Channel { return Channel::EMAIL; }
 
     protected function createMailer(): PHPMailer { return new PHPMailer(true); }
 
+    /**
+     * Отправляет одно HTML-письмо с текстовой альтернативой, ссылками и вложениями.
+     *
+     * Текст экранируется; таймаут SMTP 30 секунд, автоматических повторов нет.
+     * Операционный отказ отражается в SendResult; reporter не должен выбрасывать исключения.
+     * @throws \InvalidArgumentException Чужой канал или недоступное вложение до отправки.
+     */
     public function send(Message $message, Recipient $recipient): SendResult
     {
         if ($recipient->channel !== $this->getChannel()) throw new \InvalidArgumentException('Wrong recipient channel');

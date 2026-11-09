@@ -6,14 +6,34 @@ use SiteApi\Root\Messenger\{ClientContract, Message, Recipient, SendResult, Chan
 
 class Client implements ClientContract
 {
+    /**
+     * Создаёт Telegram-клиент с явным токеном и регистратором отказов.
+     *
+     * Сеть не вызывается; проверяется формат токена, но не его действительность.
+     * @throws \InvalidArgumentException Неверный формат токена.
+     * @throws \LogicException Недоступно расширение cURL.
+     */
     public function __construct(private readonly string $token, private readonly DeliveryErrorReporter $reporter = new LogDeliveryErrorReporter())
     {
         if (!preg_match('/^[0-9]+:[a-zA-Z0-9_-]+$/D', $token)) throw new \InvalidArgumentException('Invalid Telegram token');
         if (!extension_loaded('curl')) throw new \LogicException('Telegram requires ext-curl');
     }
 
+    /**
+     * Возвращает канал TELEGRAM.
+     */
     public function getChannel(): Channel { return Channel::TELEGRAM; }
 
+    /**
+     * Отправляет текст, затем документы отдельными запросами Telegram.
+     *
+     * При отказе текста документы не отправляются; отказ документа не останавливает остальные.
+     * Автоматического разбиения и повторов нет. Ограничения: 4096 UTF-16 единиц текста,
+     * 100 действий, подпись кнопки до 256 байт, файл до 50 000 000 байт.
+     * Отказы транспорта отражаются в SendResult; reporter не должен выбрасывать исключения.
+     * @throws \InvalidArgumentException Чужой канал, неверное вложение или превышение лимитов.
+     * @throws \JsonException Невозможно закодировать кнопки до начала доставки.
+     */
     public function send(Message $message, Recipient $recipient): SendResult
     {
         if ($recipient->channel !== $this->getChannel()) throw new \InvalidArgumentException('Wrong recipient channel');

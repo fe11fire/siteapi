@@ -9,6 +9,9 @@ enum LoggerEnum: string
     case FILE = 'file';
     case STDOUT = 'stdout';
 
+    /**
+     * Создаёт новый провайдер выбранного вида без записи события.
+     */
     public function getProvider(): LoggerContract
     {
         return match ($this) {

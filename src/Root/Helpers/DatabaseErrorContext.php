@@ -8,6 +8,12 @@ use Throwable;
 /** Safe metadata only: PDO messages and errorInfo[2] may contain query values. */
 final class DatabaseErrorContext
 {
+    /**
+     * Ищет PDOException в цепочке исключений и возвращает безопасные метаданные.
+     *
+     * Не включает сообщения PDO, SQL и текст ошибки драйвера, где могут быть секреты.
+     * @return array{exception_type: class-string, sqlstate: ?string, driver_code: ?int}|null
+     */
     public static function from(Throwable $error): ?array
     {
         do {

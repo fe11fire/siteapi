@@ -11,6 +11,17 @@ final class Response
         public readonly array $headers,
     ) {}
 
+    /**
+     * Создаёт JSON-ответ, не выводя данные и не завершая обработчик.
+     *
+     * Для передачи в App вызовите ->throwSend(). Кодирование выполняется сразу.
+     * @param mixed $data JSON-совместимое значение.
+     * @param int $httpStatus Статус 200–599, кроме 204, 205 и 304, не допускающих тело.
+     * @param array<string, string> $headers Дополнительные заголовки без управляющих символов;
+     *     Content-Type, Content-Length и Transfer-Encoding задавать нельзя.
+     * @throws \InvalidArgumentException Недопустимый статус или заголовок.
+     * @throws \JsonException Значение невозможно закодировать.
+     */
     public static function json(mixed $data, int $httpStatus = 200, array $headers = []): self
     {
         if ($httpStatus < 200 || $httpStatus > 599 || in_array($httpStatus, [204, 205, 304], true)) {
@@ -31,13 +42,31 @@ final class Response
         return new self($body, $httpStatus, $validated);
     }
 
-    /** code is an application value, independent of the HTTP status. */
+    /**
+     * Создаёт успешный ответ с полями status=true, code и data.
+     *
+     * Не отправляет ответ автоматически; далее вызовите ->throwSend().
+     * @param int $code Прикладной код, не HTTP-статус; ID рекомендуется помещать в data.
+     * @param mixed $data Публичные JSON-совместимые данные.
+     * @throws \InvalidArgumentException Недопустимый статус или заголовок.
+     * @throws \JsonException Ошибка кодирования данных.
+     * @see self::json()
+     */
     public static function ok(int $code = 0, mixed $data = '', int $httpStatus = 200, array $headers = []): self
     {
         return self::json(['status' => true, 'code' => $code, 'data' => $data], $httpStatus, $headers);
     }
 
-    /** data is public response data, never a diagnostic logging context. */
+    /**
+     * Создаёт ответ с status=false и msg; data добавляется только при значении не null.
+     *
+     * Не отправляет ответ автоматически. В data передаются публичные данные,
+     * а диагностический контекст следует писать в журнал, а не возвращать посетителю.
+     * @param int $httpStatus HTTP-статус, по умолчанию 400.
+     * @throws \InvalidArgumentException Недопустимый статус или заголовок.
+     * @throws \JsonException Ошибка кодирования данных.
+     * @see self::json()
+     */
     public static function error(string $msg = '', int $httpStatus = 400, mixed $data = null, array $headers = []): self
     {
         $payload = ['status' => false, 'msg' => $msg];
@@ -45,13 +74,27 @@ final class Response
         return self::json($payload, $httpStatus, $headers);
     }
 
-    /** Unwinds handlers and middleware; App emits the response and runs finally. */
+    /**
+     * Прерывает обработчик, передавая этот ответ в App через ResponseReady.
+     *
+     * Сам ничего не выводит. App очистит буферы, вызовет emit() и выполнит finally.
+     * Используется только внутри App::run(); промежуточный catch(Throwable) должен
+     * пропускать ResponseReady дальше. Блоки finally обработчика также выполняются.
+     * @throws ResponseReady Сигнал готового ответа, а не ошибка приложения.
+     */
     public function throwSend(): never
     {
         throw new ResponseReady($this);
     }
 
-    /** Output only; normally called by App, does not terminate execution. */
+    /**
+     * Выводит HTTP-статус, заголовки и JSON; обычно вызывается только App.
+     *
+     * Не завершает выполнение и не очищает буферы. Удаляет прежние Location/Content-Length,
+     * сохраняет прочие заголовки, включая cookie. Явный статус устанавливает после заголовков.
+     * Для HEAD тело не выводится.
+     * @throws \RuntimeException Заголовки уже отправлены.
+     */
     public function emit(): void
     {
         if (headers_sent()) {

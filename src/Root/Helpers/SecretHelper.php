@@ -7,6 +7,14 @@ class SecretHelper
 {
     private const SESSION_KEY = '__siteapi_csrf_tokens';
 
+    /**
+     * Возвращает CSRF-токен формы, создавая случайный токен при отсутствии.
+     *
+     * Лениво запускает сессию; токен связан с сессией и именем, автоматически не истекает
+     * и не уничтожается после проверки. Управление сроком сессии остаётся приложению.
+     * @throws \InvalidArgumentException Пустое имя токена.
+     * @throws \RuntimeException Сессия недоступна, не запускается или вывод уже отправлен.
+     */
     public static function get(string $name): string
     {
         self::ensureSession();
@@ -24,7 +32,13 @@ class SecretHelper
         return $tokens[$name];
     }
 
-    /** Does not generate a token when none was issued. */
+    /**
+     * Проверяет выданный сессионный CSRF-токен через hash_equals().
+     *
+     * Не создаёт отсутствующий токен, но при необходимости запускает сессию.
+     * Неверный тип, формат, имя или несовпадение возвращают false; токен не расходуется.
+     * @throws \RuntimeException Невозможно запустить сессию.
+     */
     public static function validate(string $name, mixed $token): bool
     {
         self::ensureSession();

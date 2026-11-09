@@ -7,6 +7,11 @@ use Throwable;
 
 final class LogDeliveryErrorReporter implements DeliveryErrorReporter
 {
+    /**
+     * Записывает безопасные метаданные отказа доставки, без сообщения и адреса получателя.
+     *
+     * Отказ логгера переводит в error_log и не меняет результат доставки.
+     */
     public function report(SendResult $result, string $part, string $reason, Throwable $error): void
     {
         $context = ['operation_id' => $result->operationId, 'channel' => $result->channel->value,

@@ -8,6 +8,16 @@ use SiteApi\Root\Settings\Settings;
 /** Front controller for ordinary PHP-FPM/Apache requests. */
 final class App
 {
+    /**
+     * Обрабатывает один HTTP-запрос из корня приложения.
+     *
+     * Меняет рабочий каталог, загружает настройки и маршруты, буферизует вывод.
+     * ResponseReady отправляет как ответ, остальные Throwable передаёт ErrorHandler.
+     * В finally завершает буферы и восстанавливает cwd и Settings::$directory.
+     * Ограничение: один запуск на запрос; статическое состояние сервисов не изолируется.
+     * exit/die и уже отправленный вывод не позволяют гарантировать завершение и чистый ответ.
+     * @param string $root Каталог приложения с routes/ и необязательными settings/main/.
+     */
     public static function run(string $root): void
     {
         $level = ob_get_level();

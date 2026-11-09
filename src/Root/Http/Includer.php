@@ -9,6 +9,13 @@ class Includer
 {
     private static array $module_styles = [];
 
+    /**
+     * Выводит существующие css.php, js.php и views.php выбранных наборов headers.
+     *
+     * Сначала подключает CSS всех наборов, затем JS и views. Отсутствующие файлы пропускает.
+     * @param list<string> $headers Доверенные имена каталогов относительно пути headers.
+     * @throws \Throwable Ошибка настроек или подключаемого PHP-кода.
+     */
     public static function include_Headers(array $headers): void
     {
         if (count($headers) == 0) {
@@ -29,6 +36,19 @@ class Includer
         }
     }
 
+    /**
+     * Выполняет PHP-шаблон с переменными и однократно подключает его style_*.php.
+     *
+     * Данные распаковываются через переменные переменных в общей служебной области.
+     * Ограничение: ключи module, vars, filename, key, key_value зарезервированы;
+     * они могут перезаписать служебные значения, потеряться или вызвать ошибку.
+     * Пример допустимых данных: Module::make('card.php', ['title' => 'Контакты']).
+     * Шаблон и файл оформления также разделяют область переменных и должны быть доверенными.
+     * Имя файла не ограничено базовым каталогом; пользовательский путь передавать нельзя.
+     * Отсутствующий шаблон журналируется и пропускается; стиль может выполниться до проверки.
+     * Учёт подключённых стилей статический и не сбрасывается между запусками App.
+     * @throws \Throwable Ошибка подключаемого кода или журналирования.
+     */
     public static function include_Module(Module $module): void
     {
         $vars = $module->get_Vars();
@@ -58,6 +78,13 @@ class Includer
         return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
+    /**
+     * Формирует экранированные HTML-атрибуты data-* с ведущими пробелами.
+     *
+     * Значения приводятся к строкам; массивы автоматически в JSON не кодируются.
+     * @param array<string, scalar|\Stringable|null> $data Имена без префикса data- и значения.
+     * @throws \InvalidArgumentException Недопустимое имя атрибута.
+     */
     public static function var_To_InlineData(array $data): string
     {
         $line = '';
@@ -70,7 +97,13 @@ class Includer
         return $line;
     }
 
-    /** CSS values must come from trusted application code. */
+    /**
+     * Формирует атрибут style с HTML-экранированием.
+     *
+     * Имена CSS-свойств проверяются, значения CSS не очищаются и должны быть доверенными.
+     * @param array<string, string> $style Свойства и CSS-значения.
+     * @throws \InvalidArgumentException Недопустимое имя свойства.
+     */
     public static function var_To_InlineStyle(array $style): string
     {
         $declarations = '';
@@ -83,6 +116,13 @@ class Includer
         return 'style="' . self::escapeHtml($declarations) . '"';
     }
 
+    /**
+     * Формирует option с экранированными value и текстом.
+     *
+     * checked сохранён для совместимости, но не является стандартным атрибутом option;
+     * для выбора используйте selected. Значения флагов сравниваются нестрого с true.
+     * @param array<array{value: scalar|null, text: scalar|null, checked?: bool, selected?: bool}> $data
+     */
     public static function var_To_SelectOptions(array $data): string
     {
         $options = '';
@@ -101,10 +141,11 @@ class Includer
     }
 
     /**
-     * Build event attributes from trusted application JavaScript.
-     * Escapes HTML attribute boundaries; does not sanitize JavaScript.
+     * Формирует HTML-атрибуты событий из доверенных JavaScript-строк.
      *
-     * @param array<string, string> $data Event names mapped to JavaScript bodies.
+     * Экранирует границы HTML-атрибута, но не очищает JavaScript.
+     * @param array<string, string> $data Имена вида onclick и тела обработчиков.
+     * @throws \InvalidArgumentException Недопустимое имя события или нестроковый обработчик.
      */
     public static function var_To_InlineScripts(array $data): string
     {
@@ -120,7 +161,13 @@ class Includer
         }
         return $events;
     }
-    /** Function names must refer to trusted application functions. */
+    /**
+     * Формирует атрибуты событий с вызовом доверенной JS-функции без аргументов.
+     *
+     * Используется только элемент 0; остальные элементы массива игнорируются.
+     * @param array<string, array{0: string}> $data Например ['onclick' => ['app.save']].
+     * @throws \InvalidArgumentException Недопустимое событие или имя функции.
+     */
     public static function var_To_InlineEvents(array $data): string
     {
         $events = '';

@@ -7,6 +7,12 @@ use SiteApi\Root\Settings\Settings;
 
 class Memcached implements CacheContract
 {
+    /**
+     * Принимает готовый клиент расширения Memcached либо создаёт его лениво.
+     *
+     * Стандартная конфигурация задаёт только memcached.host/port; остальные опции
+     * и аутентификацию настраивайте в передаваемом клиенте.
+     */
     public function __construct(private ?Client $client = null) {}
 
     private function connection(): Client
@@ -27,6 +33,13 @@ class Memcached implements CacheContract
         return $this->client;
     }
 
+    /**
+     * Сохраняет строку с TTL в секундах, преобразуя срок свыше 30 дней в timestamp.
+     *
+     * 0 означает отсутствие срока. Ключ передаётся напрямую без хеширования CacheProvider.
+     * @throws \InvalidArgumentException Отрицательный TTL.
+     * @throws \RuntimeException Расширение недоступно или запись не выполнена.
+     */
     public function set(string $key, string $value, int $period): void
     {
         if ($period < 0) {
@@ -40,6 +53,11 @@ class Memcached implements CacheContract
         }
     }
 
+    /**
+     * Возвращает строку либо null при RES_NOTFOUND, различая промах и отказ сервера.
+     * @throws \RuntimeException Ошибка настройки/чтения.
+     * @throws \UnexpectedValueException В кэше хранится значение другого типа.
+     */
     public function get(string $key): ?string
     {
         $client = $this->connection();
@@ -57,6 +75,10 @@ class Memcached implements CacheContract
         return $value;
     }
 
+    /**
+     * Удаляет запись Memcached; отсутствующий ключ не считается ошибкой.
+     * @throws \RuntimeException Ошибка настройки/удаления.
+     */
     public function delete(string $key): void
     {
         $client = $this->connection();
@@ -65,11 +87,19 @@ class Memcached implements CacheContract
         }
     }
 
+    /**
+     * Возвращает имя Memcached без обращения к серверу.
+     */
     public function info(): string
     {
         return CacheEnum::MEMCACHED->value;
     }
 
+    /**
+     * Проверяет версии настроенных серверов; пустой/ошибочный ответ даёт false.
+     *
+     * Исключения соединения не распространяются.
+     */
     public function status(): bool
     {
         try {

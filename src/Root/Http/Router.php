@@ -20,7 +20,11 @@ class Router
     private static string $address;
     private static array $params = [];
 
-    /** Clear router state between isolated tests; call init() before routing again. */
+    /**
+     * Очищает статическое состояние роутера для независимых тестовых сценариев.
+     *
+     * После сброса требуется init(); подключённые классы и эффект require_once не отменяются.
+     */
     public static function reset(): void
     {
         self::$routes = [];
@@ -34,6 +38,16 @@ class Router
         self::$params = [];
     }
 
+    /**
+     * Разбирает URI, загружает правила маршрутов и файлы middleware.
+     *
+     * Вызывается один раз на запрос: повторный init() без reset() накапливает правила.
+     * В каталогах маршрутов и middleware подключаются все файлы без фильтра расширений.
+     * @param string $request URI с путём и необязательной query string.
+     * @param bool $allowMissingMiddlewares Разрешить отсутствие каталога middleware.
+     * @throws \InvalidArgumentException Невозможно разобрать URI.
+     * @throws \Throwable Ошибка чтения каталогов или выполнения конфигурационных PHP-файлов.
+     */
     public static function init(string $request, bool $allowMissingMiddlewares = false)
     {
         self::$request = $request;
@@ -46,6 +60,18 @@ class Router
         }
     }
 
+    /**
+     * Находит маршрут по точному имени с префиксом env.folder и выполняет его.
+     *
+     * До страницы вызывает middleware; HTTP-метод автоматически не проверяет.
+     * Wrapper получает $filename и сам подключает страницу. require_once не выполняет
+     * общий wrapper или страницу повторно в том же запросе. Пути должны быть доверенными.
+     * @param string $name Полное имя, например company/about при folder=company/.
+     * @param array|null $new_Params null сохраняет параметры, массив полностью заменяет их.
+     * @return bool true после выполнения; false при отсутствии правила.
+     * @throws \RuntimeException Middleware отсутствует или не реализует контракт.
+     * @throws \Throwable Исключение middleware, wrapper или страницы; ResponseReady пропускается в App.
+     */
     public static function route(string $name, ?array $new_Params = null): bool
     {
         $folder = Settings::getString('env', 'folder', '');
@@ -91,6 +117,27 @@ class Router
         return false;
     }
 
+    /**
+     * Перенаправляет на маршрут приложения и завершает выполнение через exit.
+     *
+     * Адрес собирается как https://{env.domain}{env.host}/{env.folder}{name}.
+     * Имя маршрута должно поступать из доверенного кода приложения.
+     *
+     * Устаревший способ сборки query string: ключи и значения new_Params
+     * добавляются без URL-кодирования. Символы & и # меняют смысл значения;
+     * существующие query string и фрагмент в name не учитываются при добавлении
+     * параметров. Например, ['q' => 'a&sort=date'] создаст два параметра,
+     * а redirect('search?page=2', ['q' => 'text']) добавит второй знак ?.
+     * Для корректного кодирования и объединения параметров используйте redirectSafe().
+     *
+     * Важно: exit пропускает блоки finally, включая завершение App::run().
+     * Это ограничение относится также к redirectSafe().
+     *
+     * @param string $name Маршрут относительно папки приложения.
+     * @param array|null $new_Params Дополнительные параметры; значения не кодируются.
+     * @return void Метод завершает выполнение процесса запроса.
+     * @see self::redirectSafe()
+     */
     public static function redirect(string $name, ?array $new_Params = null): void
     {
         $url = $name;
@@ -105,7 +152,15 @@ class Router
         exit;
     }
 
-    /** Encodes added query values; the route itself must be trusted application code. */
+    /**
+     * Перенаправляет с URL-кодированием новых параметров по RFC 3986.
+     *
+     * Учитывает query string и фрагмент; null пропускается, массивы кодируются вложенно.
+     * Сам маршрут и настройки адреса должны быть доверенными. Использует redirect(),
+     * поэтому завершает запрос через exit и пропускает finally, включая App::run().
+     * @param array|null $new_Params Дополнительные параметры URL.
+     * @throws \InvalidArgumentException Имя маршрута содержит перевод строки.
+     */
     public static function redirectSafe(string $name, ?array $new_Params = null): void
     {
         self::redirect(self::buildRedirectUrl($name, $new_Params));
@@ -135,26 +190,56 @@ class Router
         self::$route = trim($parts['path'] ?? '', '/');
     }
 
+    /**
+     * Возвращает путь запроса без query string и крайних слешей.
+     *
+     * Префикс env.folder остаётся в пути. До чтения требуется init() или reset().
+     * @return string
+     */
     public static function get_Route()
     {
         return self::$route;
     }
 
+    /**
+     * Возвращает путь выбранного маршрута с префиксом env.folder.
+     *
+     * До первого найденного маршрута значение не определено; reset() задаёт пустую строку.
+     * @return string
+     */
     public static function get_Path()
     {
         return self::$path;
     }
 
+    /**
+     * Возвращает address правила либо его имя с префиксом env.folder.
+     *
+     * До первого найденного маршрута значение не определено; reset() задаёт пустую строку.
+     * @return string
+     */
     public static function get_Address()
     {
         return self::$address;
     }
 
+    /**
+     * Возвращает параметры query string с учётом последующих замен.
+     *
+     * POST и JSON-тело не считываются; вложенные массивы parse_str() сохраняются.
+     * @return array
+     */
     public static function get_Params()
     {
         return self::$params;
     }
 
+    /**
+     * Возвращает параметр по имени.
+     *
+     * Отсутствие, явный null и значение false не различаются: результат false.
+     * Для сохранения различий используйте get_Params() и array_key_exists().
+     */
     public static function get_Param_by_Name(string $name): mixed
     {
         if (isset(self::$params) && isset(self::$params[$name])) {
@@ -165,11 +250,19 @@ class Router
         return false;
     }
 
+    /**
+     * Создаёт или заменяет параметр без кодирования и изменения его типа.
+     */
     public static function apply_Param_by_Name(string $name, mixed $value): void
     {
         self::$params[$name] = $value;
     }
 
+    /**
+     * Проверяет сегмент ajax после удаления префикса env.folder.
+     *
+     * Заголовок X-Requested-With не учитывается; до init()/reset() возвращает false.
+     */
     public static function is_Ajax(): bool
     {
         return isset(self::$route) && RequestPath::isAjax(self::$route, Settings::getString('env', 'folder', ''));

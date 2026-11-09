@@ -14,20 +14,22 @@ class DBHelper
     private static ?PDO $connection = null;
 
     /**
-     * Select exactly one row; return false when no rows match.
-     * Throws UnexpectedValueException when multiple rows match.
+     * Выбирает ровно одну строку; отсутствие возвращает false, несколько строк — исключение.
      *
-     * @param string $columns '*' or list of columns
-     * @param array $tables tables with shortNames
-     * @param string $beforeWhere command before Where like JOIN
-     * @param array $where where conclusions in key value format
-     * @param string $beforeWhere commands after where like GROUP ORDER HAVING
-     * @param array $single_Row matched row, or an empty array when no unique result is returned
-     * @param bool $logging log where, args, sql in 'queries/'
-     * @param bool $debug log where, args, sql in 'debug/'
-     * @return bool
+     * Выборка загружается целиком, автоматический LIMIT не добавляется.
+     * SQL-структура и имена колонок должны быть доверенными; значения where связываются отдельно.
+     * @param string $columns SQL-список колонок или *.
+     * @param array<string> $table Таблицы с необязательными SQL-псевдонимами.
+     * @param string $beforeWhere Доверенный SQL до WHERE, например JOIN.
+     * @param array $where Условия по контракту select().
+     * @param string $afterWhere Доверенный SQL после WHERE, например ORDER BY/LIMIT.
+     * @param array|null $single_Row Выходной аргумент: найденная строка; при отсутствии/неуникальности [].
+     * @param bool $logging Журналировать метаданные операции без значений параметров.
+     * @param bool $debug Дополнительно журналировать SQL без bindings; литералы в SQL не маскируются.
+     * @throws \UnexpectedValueException Выбрано более одной строки.
+     * @throws \PDOException Ошибка подключения или SQL.
+     * @see self::select()
      */
-
     public static function selectExactlyOne(
         string $columns,
         array $table,
@@ -54,16 +56,15 @@ class DBHelper
     }
 
     /**
-     * Select count of rows
+     * Считает строки результата SELECT через обёртку SELECT COUNT(*) FROM (...).
      *
-     * @param string $columns '*' or list of columns
-     * @param array $tables tables with shortNames
-     * @param string $beforeWhere command before Where like JOIN
-     * @param array $where where conclusions in key value format
-     * @param string $beforeWhere commands after where like GROUP ORDER HAVING
-     * @param bool $logging log where, args, sql in 'queries/'
-     * @param bool $debug log where, args, sql in 'debug/'
-     * @return int 
+     * GROUP BY, DISTINCT и LIMIT влияют на считаемый результат. SQL-структура доверенная.
+     * @param array<string> $table Таблицы и необязательные псевдонимы.
+     * @param array $where Условия по контракту select().
+     * @param bool $logging Журналировать метаданные без bindings.
+     * @param bool $debug Журналировать SQL; встроенные литералы могут содержать секреты.
+     * @throws \PDOException Ошибка выполнения или несовместимая с СУБД структура подзапроса.
+     * @see self::select()
      */
     public static function selectCount(
         string $columns,
@@ -88,17 +89,21 @@ class DBHelper
     }
 
     /**
-     * Select rows
+     * Выполняет SELECT и сохраняет все строки в выходной аргумент rows.
      *
-     * @param string $columns '*' or list of columns
-     * @param array $tables tables with shortNames
-     * @param string $beforeWhere command before Where like JOIN
-     * @param array $where where conclusions in key value format
-     * @param string $beforeWhere commands after where like GROUP ORDER HAVING
-     * @param $rows selected rows
-     * @param bool $logging log where, args, sql in 'queries/'
-     * @param bool $debug log where, args, sql in 'debug/'
-     * @return bool //true or false
+     * Пустая выборка тоже успешна: возвращает true и rows=[]. Ошибки не превращаются в false.
+     * Имена таблиц/полей, операторы и SQL-фрагменты не экранируются: только доверенный код.
+     * where: ['id'=>1], ['age'=>[18, '>=']], ['deleted_at'=>null] или RawCondition с bindings.
+     * Для null допустимы только IS NULL/IS NOT NULL; для выражений используйте RawCondition.
+     * @param array<string> $tables Таблицы с необязательными псевдонимами.
+     * @param string $beforeWhere SQL до WHERE, например JOIN.
+     * @param array $where Условия; пустой массив не ограничивает выборку.
+     * @param string $afterWhere SQL после WHERE: GROUP BY, ORDER BY, LIMIT и т.п.
+     * @param array|null $rows Выходной аргумент: массив ассоциативных строк.
+     * @param bool $logging Журналировать метаданные операции без значений параметров.
+     * @param bool $debug Журналировать SQL без bindings; SQL-литералы не маскируются.
+     * @throws \PDOException Ошибка подключения или запроса.
+     * @throws \InvalidArgumentException Неподдерживаемое значение параметра или условие NULL.
      */
     public static function select(
         string $columns,
@@ -142,6 +147,19 @@ class DBHelper
             . ' ' . $beforeWhere . ' ' . $condition . ' ' . $afterWhere;
     }
 
+    /**
+     * Добавляет строку и записывает последний автоинкрементный ID в выходной аргумент.
+     *
+     * Таблица и ключи set должны быть доверенными; значения передаются через ?.
+     * Успех не означает commit активной транзакции.
+     * @param array<string, scalar|null> $set Колонки и значения.
+     * @param int|null $id Выходной идентификатор; контракт ограничен PHP int.
+     * @param bool $logging Журналировать метаданные без bindings.
+     * @param bool $debug Журналировать SQL, включая незамаскированные SQL-литералы.
+     * @return bool true при выполнении; ошибки выбрасываются.
+     * @throws \PDOException Ошибка SQL/подключения.
+     * @throws \InvalidArgumentException Неподдерживаемое значение параметра.
+     */
     public static function insert(
         string $table,
         array $set,
@@ -176,6 +194,18 @@ class DBHelper
         }
     }
 
+    /**
+     * Удаляет строки по условиям, не возвращая число затронутых записей.
+     *
+     * Важно: пустой where удаляет ВСЕ строки таблицы; дополнительного подтверждения нет.
+     * Имена и SQL-структура должны быть доверенными. Операция не завершает транзакцию.
+     * @param array $where Условия по контракту select().
+     * @param bool $logging Журналировать метаданные без значений параметров.
+     * @param bool $debug Журналировать SQL без маскирования встроенных литералов.
+     * @return bool true даже при отсутствии совпадений.
+     * @throws \PDOException Ошибка выполнения SQL.
+     * @see self::select()
+     */
     public static function delete(string $table, array $where, bool $logging = true, bool $debug = false): bool
     {
         $args = array();
@@ -199,6 +229,19 @@ class DBHelper
         }
     }
 
+    /**
+     * Обновляет строки по условиям, не возвращая число затронутых записей.
+     *
+     * Важно: пустой where обновляет ВСЕ строки. Имена таблицы/колонок и операторы
+     * должны быть доверенными; значения связываются отдельно. Commit не выполняется.
+     * @param array<string, scalar|null> $Set Колонки и новые значения.
+     * @param array $where Условия по контракту select().
+     * @param bool $logging Журналировать метаданные без bindings.
+     * @param bool $debug Журналировать SQL; встроенные литералы не маскируются.
+     * @return bool true даже при отсутствии изменений/совпадений.
+     * @throws \PDOException Ошибка SQL.
+     * @see self::select()
+     */
     public static function update(string $table, array $Set, array $where, $logging = true, $debug = false)
     {
         $set = '';
@@ -272,26 +315,62 @@ class DBHelper
         return self::$connection;
     }
 
+    /**
+     * Начинает транзакцию на общем ленивом PDO-соединении запроса.
+     *
+     * Вложенные транзакции/savepoint автоматически не поддерживаются.
+     * @throws \PDOException Ошибка подключения или уже начатая транзакция.
+     */
     public static function beginTransaction(): bool
     {
         return self::getConnection()->beginTransaction();
     }
 
+    /**
+     * Фиксирует активную транзакцию общего PDO-соединения.
+     *
+     * Автоматических повторов нет.
+     * @throws \PDOException Транзакция не начата или фиксация завершилась ошибкой.
+     */
     public static function commit(): bool
     {
         return self::getConnection()->commit();
     }
 
+    /**
+     * Откатывает активную транзакцию общего PDO-соединения.
+     *
+     * Откат автоматически при прикладной ошибке не вызывается этим методом.
+     * @throws \PDOException Транзакция не начата или откат завершился ошибкой.
+     */
     public static function rollBack(): bool
     {
         return self::getConnection()->rollBack();
     }
 
+    /**
+     * Проверяет активную транзакцию, не создавая соединение при его отсутствии.
+     */
     public static function inTransaction(): bool
     {
         return self::$connection !== null && self::$connection->inTransaction();
     }
 
+    /**
+     * Выполняет доверенный SQL через общее PDO-соединение.
+     *
+     * Связывает параметры по порядку обхода args, независимо от ключей: только позиционные ?.
+     * Без параметров использует PDO::query(). Float передаёт как строку, остальные скалярные
+     * типы и null связывает явно. Не выполняет commit и не возвращает affected rows.
+     * @param string $sql Доверенный SQL; идентификаторы и структуру нельзя брать из запроса пользователя.
+     * @param array<scalar|null>|null $args Значения позиционных плейсхолдеров.
+     * @param bool|null $fetch Загрузить все строки через fetchAll().
+     * @param bool|null $last_id Вернуть lastInsertId(); имеет приоритет над fetch.
+     * @param bool $exec_time Устаревший флаг: измерение не публикуется и не возвращается.
+     * @return array|string|false Строки при fetch, ID при last_id, иначе []; false возможен от драйвера lastInsertId().
+     * @throws \PDOException Ошибка подключения или SQL.
+     * @throws \InvalidArgumentException Параметр не скаляр и не null.
+     */
     public static function universal($sql, $args = null, $fetch = null, $last_id = null, $exec_time = false)
     {
         $rows = [];

@@ -7,6 +7,14 @@ use Monolog\Logger;
 
 class LoggerProvider implements LoggerContract
 {
+    /**
+     * Возвращает логгер выбранного провайдера; по умолчанию используется FileLogger.
+     *
+     * Логгер создаётся при каждом вызове, экземпляры не кэшируются.
+     * @param string $folder Доверенный подкаталог журнала.
+     * @param Level $status Минимальный уровень обработчика.
+     * @throws \Throwable Ошибка создания каталога или обработчика.
+     */
     public static function get(string $folder, Level $status): Logger
     {
         self::initDefault();
@@ -15,6 +23,12 @@ class LoggerProvider implements LoggerContract
 
     private static LoggerContract $instance;
 
+    /**
+     * Выбирает глобальный провайдер логирования по enum или строковому имени.
+     *
+     * Повторный вызов заменяет выбранный провайдер.
+     * @throws \InvalidArgumentException Неизвестное имя провайдера.
+     */
     public static function init(LoggerEnum|string $logger): void
     {
         $provider = $logger instanceof LoggerEnum ? $logger : LoggerEnum::tryFrom($logger);
@@ -32,6 +46,9 @@ class LoggerProvider implements LoggerContract
         }
     }
 
+    /**
+     * Возвращает имя провайдера; при отсутствии выбора инициализирует файловый.
+     */
     public static function info(): string
     {
         self::initDefault();

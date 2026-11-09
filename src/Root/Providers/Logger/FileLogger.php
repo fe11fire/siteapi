@@ -11,6 +11,14 @@ use SiteApi\Root\Helpers\FileHelper;
 
 class FileLogger implements LoggerContract
 {
+    /**
+     * Создаёт новый Monolog с файлом logs/{год}/{folder}/{месяц-день}.log.
+     *
+     * Путь logs берётся из настроек. folder должен быть доверенным: .. не блокируется.
+     * Каталоги создаются автоматически; ротация/удаление старых файлов не выполняются.
+     * @param Level $status Минимальный уровень обработчика.
+     * @throws \Throwable Ошибка настроек, каталога или файлового обработчика.
+     */
     public static function get(string $folder, Level $status): Logger
     {
         $now = Carbon::now();
@@ -24,6 +32,9 @@ class FileLogger implements LoggerContract
         return $log;
     }
 
+    /**
+     * Возвращает имя файлового провайдера без открытия файла.
+     */
     public static function info(): string
     {
         return LoggerEnum::FILE->value;

@@ -14,6 +14,16 @@ class Curl
 
     private string $log_folder = 'curl/';
 
+    /**
+     * Настраивает JSON HTTP-запрос, не выполняя его до exec().
+     *
+     * Тело отправляется даже при пользовательском методе GET. Таймаут соединения 5 секунд,
+     * общий 10 секунд. URL должен быть доверенным: ограничения внутренних адресов нет.
+     * @param list<string> $user_header Заголовки в формате Name: value.
+     * @param array $user_payload Данные JSON-тела.
+     * @param string $log_folder Доверенный подкаталог журнала успешных запросов.
+     * @throws \JsonException Payload невозможно закодировать.
+     */
     public function __construct(
         string $url,
         array $user_header,
@@ -31,6 +41,14 @@ class Curl
         $this->log_folder = $log_folder;
     }
 
+    /**
+     * Выполняет запрос и сохраняет статус, декодированный результат и категорию ошибки.
+     *
+     * Успех: HTTP 2xx и корректный JSON либо пустой ответ 204. JSON-объекты становятся stdClass.
+     * Сетевые/HTTP/JSON-ошибки возвращают false, подробности доступны через get_error().
+     * JSON-тело ошибочного HTTP-ответа также может быть доступно через get_result().
+     * Повторов нет; отказ логгера не меняет результат запроса.
+     */
     public function exec(): bool
     {
         $this->result = null;
@@ -70,22 +88,43 @@ class Curl
         return $this->error === null;
     }
 
+    /**
+     * Возвращает null либо timeout, connection_failed, http_error, invalid_json.
+     *
+     * До первого exec() также null: это не свидетельство выполненного успешного запроса.
+     */
     public function get_error(): ?string
     {
         return $this->error;
     }
 
+    /**
+     * Удаляет все двойные кавычки и крайние пробельные символы из строки.
+     *
+     * Не проверяет формат токена и не выполняет криптографическую обработку.
+     * @param string $token
+     * @return string
+     */
     public function clear_token($token)
     {
         $token = str_replace('"', "", $token);
         return trim($token);
     }
 
+    /**
+     * Возвращает декодированный JSON последнего запроса, включая JSON ошибочного HTTP-ответа.
+     *
+     * null также означает отсутствие результата, пустой 204, ошибку JSON либо JSON null;
+     * для различения используйте exec(), get_error() и get_http_code().
+     */
     public function get_result(): mixed
     {
         return $this->result;
     }
 
+    /**
+     * Возвращает HTTP-статус: -1 до exec(), 0 при отсутствии HTTP-ответа.
+     */
     public function get_http_code(): int
     {
         return $this->http_code;
@@ -117,6 +156,13 @@ class Curl
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, json_encode($payload, JSON_THROW_ON_ERROR));
     }
 
+    /**
+     * Проверяет получение непустого HEAD-ответа, а не успешность HTTP-статуса.
+     *
+     * Ответы 404/500 с заголовками также могут дать true. URL должен быть доверенным.
+     * Ограничение: 10 секунд заданы только на соединение, общий таймаут отсутствует;
+     * сервер, принявший соединение и задерживающий ответ, может надолго заблокировать вызов.
+     */
     public static function ping(string $url): bool
     {
         $curl = curl_init();

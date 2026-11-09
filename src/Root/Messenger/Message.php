@@ -4,7 +4,16 @@ namespace SiteApi\Root\Messenger;
 
 final class Message
 {
-    /** @param Attachment[] $attachments @param Link[] $actions */
+    /**
+     * Создаёт сообщение с темой, обычным текстом, вложениями и ссылками.
+     *
+     * Тема/текст должны быть UTF-8; HTML трактуется как текст и экранируется клиентами.
+     * Ограничения конкретного канала проверяются при отправке.
+     * @param Attachment[] $attachments Локальные вложения.
+     * @param Link[] $actions Ссылки-действия.
+     * @param string|null $reference Прикладной идентификатор для сопоставления результата.
+     * @throws \InvalidArgumentException Пустое сообщение, неверная кодировка или тип элемента.
+     */
     public function __construct(
         public readonly string $subject = '',
         public readonly string $text = '',

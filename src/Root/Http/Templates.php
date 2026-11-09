@@ -3,11 +3,21 @@ namespace SiteApi\Root\Http;
 
 class Templates
 {
+    /**
+     * Возвращает исторический JSON для AJAX-404: [0, 1, сообщение].
+     *
+     * Сам не выводит данные, не задаёт HTTP-статус/заголовки; формат отличается от Response.
+     */
     public static function pageAjax(): string
     {
         return json_encode([0, 1, 'Ошибка при отправке данных']);
     }
 
+    /**
+     * Возвращает нейтральную HTML-страницу 500 с экранированным кодом обращения.
+     *
+     * HTTP-статус и заголовки устанавливает вызывающий код.
+     */
     public static function pageError(string $errorId): string
     {
         $id = htmlspecialchars($errorId, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -20,6 +30,12 @@ class Templates
         );
     }
 
+    /**
+     * Возвращает JSON-ошибку с полями success, message и error_id.
+     *
+     * Сам не отправляет ответ; формат отличается от Response::error().
+     * @throws \JsonException Код обращения невозможно закодировать.
+     */
     public static function pageAjaxError(string $errorId): string
     {
         return json_encode([
@@ -29,6 +45,11 @@ class Templates
         ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 
+    /**
+     * Возвращает встроенную HTML-страницу 404, не отправляя её.
+     *
+     * HTTP-статус задаёт вызывающий код; ссылка на главную указывает на / без env.folder.
+     */
     public static function page404(): string
     {
         return self::page(

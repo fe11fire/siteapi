@@ -16,6 +16,14 @@ class Settings
     private static stdClass $settings;
     private static stdClass $default_directories;
 
+    /**
+     * Загружает JSON-объекты из Settings::$directory в статическое хранилище.
+     *
+     * Сбрасывает предыдущие настройки; при ошибке набор не публикуется частично.
+     * @param bool $allowMissing Разрешить отсутствие каталога, но не ошибочные файлы.
+     * @throws \RuntimeException Каталог/файл недоступен или JSON некорректен.
+     * @throws \UnexpectedValueException Корень JSON не является объектом.
+     */
     public static function init(bool $allowMissing = false)
     {
         self::$settings = new stdClass();
@@ -66,6 +74,12 @@ class Settings
         return $found ? $section->{$name} : null;
     }
 
+    /**
+     * Читает обязательную настройку: окружение FILE_NAME имеет приоритет над JSON.
+     *
+     * Окружение возвращает строку; типы JSON сохраняются, включая явный null.
+     * @throws \RuntimeException Настройка отсутствует.
+     */
     public static function get(string $file, string $name): mixed
     {
         $found = false;
@@ -74,6 +88,11 @@ class Settings
         return $value;
     }
 
+    /**
+     * Читает настройку с приоритетом окружения, иначе JSON, иначе default.
+     *
+     * Default применяется только при отсутствии; явный null и пустая строка сохраняются.
+     */
     public static function get_Default(string $file, string $name, mixed $default): mixed
     {
         $found = false;
@@ -110,27 +129,65 @@ class Settings
         throw new \UnexpectedValueException('Setting ' . $file . '.' . $name . ' must be ' . $type);
     }
 
+    /**
+     * Читает строго строковую настройку с необязательным default третьим аргументом.
+     *
+     * Отсутствующий default и явно переданный null различаются; null не является строкой.
+     * @throws \RuntimeException Настройка отсутствует и default не передан.
+     * @throws \UnexpectedValueException Значение, включая default, не строка.
+     */
     public static function getString(string $file, string $name, mixed $default = null): string
     {
         return self::typed($file, $name, 'string', func_num_args() >= 3, $default);
     }
 
+    /**
+     * Читает bool: допускает true/false, 1/0 и строки 'true'/'false', '1'/'0'.
+     *
+     * Регистр и пробелы автоматически не нормализуются. Default учитывается, если передан.
+     * @throws \RuntimeException Настройка отсутствует без default.
+     * @throws \UnexpectedValueException Значение нельзя преобразовать по этим правилам.
+     */
     public static function getBool(string $file, string $name, mixed $default = null): bool
     {
         return self::typed($file, $name, 'bool', func_num_args() >= 3, $default);
     }
 
+    /**
+     * Читает int либо десятичную строку в диапазоне PHP int.
+     *
+     * Строки с пробелами, знаком +, ведущими нулями или дробной частью не принимаются.
+     * @throws \RuntimeException Настройка отсутствует без default.
+     * @throws \UnexpectedValueException Недопустимый формат, тип или переполнение.
+     */
     public static function getInt(string $file, string $name, mixed $default = null): int
     {
         return self::typed($file, $name, 'int', func_num_args() >= 3, $default);
     }
 
-    /** JSON arrays are lists; JSON objects remain stdClass, including inside lists. */
+    /**
+     * Читает PHP-массив либо строку с JSON-массивом.
+     *
+     * JSON-объект не преобразуется в массив; объекты внутри JSON-списков остаются stdClass.
+     * Default проходит ту же проверку типа.
+     * @throws \RuntimeException Настройка отсутствует без default.
+     * @throws \UnexpectedValueException Значение не массив и не строка с JSON-массивом.
+     */
     public static function getArray(string $file, string $name, mixed $default = null): array
     {
         return self::typed($file, $name, 'array', func_num_args() >= 3, $default);
     }
 
+    /**
+     * Возвращает путь из paths или встроенных стандартных каталогов.
+     *
+     * Ограничение: PATHS_* из окружения учитывается только при наличии ненулевого
+     * соответствующего ключа в paths.json. Без него возвращается стандартный путь.
+     * Путь не нормализуется и его существование не проверяется.
+     * @param string $name Имя пути, например routes, logs, headers, middlewares.
+     * @throws \Exception Имя отсутствует и в paths, и в стандартных каталогах.
+     * @throws \UnexpectedValueException Объявленное значение пути не строка.
+     */
     public static function get_Directory($name): string
     {
         if (
@@ -146,6 +203,12 @@ class Settings
         return self::$default_directories->{$name};
     }
 
+    /**
+     * Возвращает объявленный путь paths либо переданный default.
+     *
+     * PATHS_* учитывается только при наличии ненулевого соответствующего ключа в JSON.
+     * При отсутствии ключа окружение не проверяется. Путь не нормализуется.
+     */
     public static function get_Directory_Default($name, string $default): string
     {
         if (

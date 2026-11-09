@@ -6,6 +6,12 @@ final class Recipient
 {
     public readonly Channel $channel;
 
+    /**
+     * Создаёт получателя канала email или telegram с проверкой формата адреса.
+     *
+     * Telegram принимает числовой chat_id либо @username; существование адресата не проверяет.
+     * @throws \InvalidArgumentException Неизвестный канал или неверный формат адреса.
+     */
     public function __construct(Channel|string $channel, public readonly string $address)
     {
         $this->channel = $channel instanceof Channel ? $channel : (Channel::tryFrom($channel) ?? throw new \InvalidArgumentException('Unsupported channel'));

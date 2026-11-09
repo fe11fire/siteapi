@@ -11,7 +11,12 @@ class CacheProvider
     private static CacheContract $instance;
     private static string $prefix = 'siteapi';
 
-    /** String names remain accepted for existing applications. */
+    /**
+     * Выбирает провайдер и пространство ключей, не подключаясь к серверу сразу.
+     *
+     * Повторный вызов заменяет провайдер и prefix; prefix должен различаться у приложений.
+     * @throws \InvalidArgumentException Неизвестное имя провайдера (регистр значим).
+     */
     public static function init(CacheEnum|string $name, string $prefix = 'siteapi'): void
     {
         $type = $name instanceof CacheEnum ? $name : CacheEnum::tryFrom($name);
@@ -22,6 +27,9 @@ class CacheProvider
         self::$prefix = $prefix;
     }
 
+    /**
+     * Выбирает Memcached, если провайдер ещё не задан; соединение остаётся ленивым.
+     */
     public static function initDefault(): void
     {
         if (!isset(self::$instance)) {
@@ -38,6 +46,15 @@ class CacheProvider
         return 'siteapi:v1:' . hash('sha256', self::$prefix . "\0" . $key);
     }
 
+    /**
+     * Сериализует PHP-значение и записывает его в пространство ключей провайдера.
+     *
+     * Ключ хешируется; ресурсы, замыкания и чрезмерная вложенность не поддерживаются.
+     * Объекты могут вызывать свои методы сериализации. Используйте только доверенный кэш.
+     * @param int $period TTL в секундах; 0 без срока, отрицательные значения запрещены.
+     * @throws \InvalidArgumentException Пустой ключ, неверный TTL или неподдерживаемое значение.
+     * @throws \Throwable Ошибка сериализации или провайдера.
+     */
     public static function set(string $key, mixed $value, int $period = self::PERIOD_DEFAULT): void
     {
         if ($period < 0) {
@@ -48,7 +65,15 @@ class CacheProvider
         self::$instance->set($storageKey, self::encode($value), $period);
     }
 
-    /** @return array{hit: bool, value: mixed} */
+    /**
+     * Читает кэш, различая промах и сохранённые null/false.
+     *
+     * Восстанавливает PHP-объекты с allowed_classes=true и возможным вызовом PHP-хуков.
+     * Сервер кэша и записываемые значения должны быть доверенными; ошибки не скрываются.
+     * @return array{hit: bool, value: mixed}
+     * @throws \UnexpectedValueException Неизвестный или повреждённый формат записи.
+     * @throws \Throwable Ошибка провайдера или восстановления объекта.
+     */
     public static function read(string $key): array
     {
         self::initDefault();
@@ -58,24 +83,48 @@ class CacheProvider
             : ['hit' => true, 'value' => self::decode($encoded)];
     }
 
+    /**
+     * Возвращает сохранённое значение либо default при промахе.
+     *
+     * Сохранённые false/null не являются промахом; для явного hit используйте read().
+     * Ошибки сервера и декодирования не подменяются default.
+     * @see self::read()
+     */
     public static function get(string $key, mixed $default = false): mixed
     {
         $result = self::read($key);
         return $result['hit'] ? $result['value'] : $default;
     }
 
+    /**
+     * Проверяет наличие записи через read(), включая декодирование значения.
+     *
+     * Может восстановить объект и вызвать его PHP-хуки; ошибки кэша не скрываются.
+     * @see self::read()
+     */
     public static function has(string $key): bool
     {
         return self::read($key)['hit'];
     }
 
+    /**
+     * Удаляет запись в текущем пространстве ключей; отсутствие записи допустимо.
+     *
+     * Ошибки провайдера не скрываются. Пустой ключ запрещён.
+     */
     public static function delete(string $key): void
     {
         self::initDefault();
         self::$instance->delete(self::key($key));
     }
 
-    /** Computes on a miss; does not lock concurrent callers. */
+    /**
+     * Возвращает кэш либо вычисляет callback, сохраняет и возвращает результат.
+     *
+     * Блокировки нет: параллельные запросы могут выполнить callback одновременно.
+     * Ошибки callback и кэша распространяются; при ошибке записи результат не возвращается.
+     * @param int $period TTL в секундах, 0 без срока; отрицательный запрещён.
+     */
     public static function remember(string $key, callable $callback, int $period = self::PERIOD_DEFAULT): mixed
     {
         if ($period < 0) {
@@ -90,12 +139,19 @@ class CacheProvider
         return $value;
     }
 
+    /**
+     * Возвращает имя выбранного провайдера или Null Cache без автоматической инициализации.
+     */
     public static function info(): string
     {
         return isset(self::$instance) ? self::$instance->info() : 'Null Cache';
     }
 
-    /** Performs a health check, returning false on connection failure. */
+    /**
+     * Проверяет доступность уже выбранного провайдера.
+     *
+     * До init()/первой операции возвращает false; ошибки соединения преобразуются в false.
+     */
     public static function status(): bool
     {
         return isset(self::$instance) && self::$instance->status();

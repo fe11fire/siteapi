@@ -6,6 +6,9 @@ enum CacheEnum: string
     case REDIS = 'Redis';
     case MEMCACHED = 'Memcached';
 
+    /**
+     * Создаёт новый адаптер выбранного кэша без немедленного соединения с сервером.
+     */
     public function getProvider(): CacheContract
     {
         return match ($this) {

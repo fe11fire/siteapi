@@ -5,6 +5,13 @@ namespace SiteApi\Root\Http;
 /** Classifies a URL path without depending on initialized router state. */
 final class RequestPath
 {
+    /**
+     * Проверяет сегмент ajax в пути относительно папки приложения.
+     *
+     * Удаляет только полный префикс с границей /; похожие префиксы не совпадают.
+     * @param string $path Только URL-путь без query string, не полный URI.
+     * @param string $folder Префикс, например company/; крайние слеши несущественны.
+     */
     public static function isAjax(string $path, string $folder = ''): bool
     {
         $path = trim($path, '/');
