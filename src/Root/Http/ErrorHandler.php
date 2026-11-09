@@ -4,6 +4,7 @@ namespace SiteApi\Root\Http;
 
 use SiteApi\Root\Helpers\LogHelper;
 use SiteApi\Root\Helpers\DatabaseErrorContext;
+use SiteApi\Root\Settings\Settings;
 use Throwable;
 
 class ErrorHandler
@@ -40,9 +41,13 @@ class ErrorHandler
             error_log('Error logger failed [' . $errorId . ']: ' . $loggingError::class);
         }
 
-        // Derive the response type independently of Router/Settings initialization.
-        $isAjax = str_starts_with(trim(is_string($path) ? $path : '', '/'), 'ajax/')
-            || trim(is_string($path) ? $path : '', '/') === 'ajax';
+        // Router may not be initialized when configuration/bootstrap fails.
+        try {
+            $folder = Settings::getString('env', 'folder', '');
+        } catch (Throwable) {
+            $folder = '';
+        }
+        $isAjax = RequestPath::isAjax(is_string($path) ? $path : '', $folder);
 
         if (!headers_sent()) {
             http_response_code(500);

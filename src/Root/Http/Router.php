@@ -172,7 +172,7 @@ class Router
 
     public static function is_Ajax(): bool
     {
-        return isset(self::$route) && explode('/', self::$route)[0] == 'ajax';
+        return isset(self::$route) && RequestPath::isAjax(self::$route, Settings::getString('env', 'folder', ''));
     }
 
     private static function make_Request_Params(): void

@@ -28,7 +28,7 @@ final class App
                 echo Templates::pageAjax();
                 return;
             }
-            if (!Router::route('404')) echo Templates::page404();
+            if (!Router::route(Settings::getString('env', 'folder', '') . '404')) echo Templates::page404();
         } catch (\Throwable $error) {
             while (ob_get_level() > $level) {
                 if (!@ob_end_clean()) {
